@@ -1,5 +1,5 @@
 {
-  "name": "stores",
+  "name": "ngx-tansu",
   "peerDependencies": {
     "@angular/core": "^10.0.14"
   },
