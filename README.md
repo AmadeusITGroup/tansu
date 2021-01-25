@@ -1,3 +1,5 @@
+![build](https://github.com/AmadeusITGroup/ngx-tansu//workflows/ci/badge.svg)
+
 # ngx-tansu
 
 ngx-tansu is a lightweight, push-based state management library for Angular. 
