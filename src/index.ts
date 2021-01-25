@@ -93,7 +93,6 @@ export function get<T>(store: SubscribableStore<T>): T {
   return value!;
 }
 
-// @todo Add links to more complete exemple when site will be finished
 /**
  *
  * Base class of a store, from which all application store can inherit to create custom stores and manage reactive data
@@ -175,7 +174,6 @@ export abstract class Store<T> implements Readable<T> {
     }
   }
 
-  // @todo Add links to more complete exemple when site will be finished
   /**
    * Allow to update the store value
    * @param updater - Function called with the current value of the store. It must return the new store value.
@@ -212,9 +210,9 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   /**
-   * Function called when the number of subscriber changed form 0 to 1
-   * (but not called when the number of subscribers change from 1 to 2, ...).
-   * If a function is returned, it will be called when the number of subscribers change form 1 to 0.
+   * Function called when the number of subscribers changes from 0 to 1
+   * (but not called when the number of subscribers changes from 1 to 2, ...).
+   * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
    *
    * @example
    *
@@ -286,7 +284,7 @@ export abstract class Store<T> implements Readable<T> {
 }
 
 /**
- * Interface representing an argument of a function passed as a second argument to the store creation shorthands (readable, writable)
+ * Interface representing an argument of a function passed as a second argument to the store creation shorthands (readable, writable).
  */
 interface OnUseArgument<T> {
   (value: T): void;
@@ -294,10 +292,31 @@ interface OnUseArgument<T> {
   update: (updater: Updater<T>) => void;
 }
 
-export const readable = <T>(
+/**
+ * A convenience function to create stores that can't be modified from "outside" (that is, API of this store don't expose any state mutation methods).
+ *
+ * @example
+ *
+ * ```typescript
+ * const clock = readable("00:00", setState => {
+ *   const intervalID = setInterval(() => {
+ *     const date = new Date();
+ *     setState(`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`);
+ *   }, 1000);
+ *
+ *   return () => clearInterval(intervalID);
+ * });
+ * ```
+ *
+ * @param value - Initial value of a readable store.
+ * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
+ * (but not called when the number of subscribers changes from 1 to 2, ...).
+ * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
+ */
+export function readable<T>(
   value: T,
   onUseFn: (arg: OnUseArgument<T>) => void | Unsubscriber = noop
-): Readable<T> => {
+): Readable<T> {
   const ReadableStoreWithOnUse = class extends Store<T> {
     protected onUse() {
       const setFn = (v: T) => this.set(v);
@@ -307,7 +326,7 @@ export const readable = <T>(
     }
   };
   return asReadable(new ReadableStoreWithOnUse(value));
-};
+}
 
 @Injectable()
 class WritableStore<T> extends Store<T> implements Writable<T> {
@@ -325,12 +344,12 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
 }
 
 /**
- * Generic store, exposing set and update
- * It is used with a functionnal style, e.g. const store = writable('');
+ * Generic store, exposing set and update functionality.
+ * It is used with a functional style, e.g. const store = writable('');
  * @param value - Initial value
- * @param onUseFn - Function called when the number of subscriber changed form 0 to 1
- * (but not called when the number of subscribers change from 1 to 2, ...).
- * If a function is returned, it will be called when the number of subscribers change form 1 to 0.
+ * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
+ * (but not called when the number of subscribers changes from 1 to 2, ...).
+ * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
  * @example
  *
@@ -348,7 +367,6 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
  * store.update((object) => {object.count++; return object});
  * unsubscribe(); // Output 'No more subscriber';
  * ```
- *
  */
 export function writable<T>(
   value: T,
@@ -480,7 +498,7 @@ export abstract class DerivedStore<
 
 /**
  * Derives a store from one or more other stores. Whenever those dependencies change, the deriveFn runs.
- * This is the functionnal style of a {@link DerivedStore}
+ * This is the functional style of a {@link DerivedStore}
  *
  * @param stores - store or array of stores
  * @param deriveFn - Callback run with the store value or the array of store values
