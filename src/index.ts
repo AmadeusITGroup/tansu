@@ -2,37 +2,93 @@ import { Injectable, OnDestroy } from '@angular/core';
 
 const symbolObservable = (typeof Symbol === 'function' && Symbol.observable) || '@@observable';
 
-/** Callback to inform of a value updates. */
-type SubscriberFunction<T> = (value: T) => void;
+/**
+ * A callback invoked when a store value changes. It is called with the latest value of a given store.
+ */
+export type SubscriberFunction<T> = (value: T) => void;
 
-interface SubscriberObject<T> {
+/**
+ * A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the `next` method every time the store's state is changing.
+ */
+export interface SubscriberObject<T> {
   next: SubscriberFunction<T>;
   invalidate: () => void;
 }
 
-type Subscriber<T> = SubscriberFunction<T> | Partial<SubscriberObject<T>> | null | undefined;
+/**
+ * Expresses interest in store value changes over time. It can be either:
+ * - a callback function: {@link SubscriberFunction};
+ * - a partial observer: {@link SubscriberObject}.
+ */
+export type Subscriber<T> = SubscriberFunction<T> | Partial<SubscriberObject<T>> | null | undefined;
 
-/** Unsubscribes from value updates. */
-type UnsubscribeFunction = () => void;
+/**
+ * A function to unsubscribe from value change notifications.
+ */
+export type UnsubscribeFunction = () => void;
 
-interface UnsubscribeObject {
+/**
+ * An object with the `unsubscribe` method.
+ * Subscribable stores might choose to return such object instead of directly returning {@link UnsubscribeFunction} from a subscription call.
+ */
+export interface UnsubscribeObject {
+  /**
+   * A method that acts as the {@link UnsubscribeFunction}.
+   */
   unsubscribe: UnsubscribeFunction;
 }
-type Unsubscriber = UnsubscribeObject | UnsubscribeFunction;
 
-/** Callback to update a value. */
-type Updater<T> = (value: T) => T;
+export type Unsubscriber = UnsubscribeObject | UnsubscribeFunction;
 
+/**
+ * Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change.
+ */
 export interface SubscribableStore<T> {
+  /**
+   * A method that makes it possible to register "interest" in store value changes over time.
+   * It is called each and every time the store's value changes.
+   * A registered subscriber is notified synchronously with the latest store value.
+   *
+   * @param subscriber - a subscriber in a form of a {@link SubscriberFunction} or a {@link SubscriberObject}. Returns a {@link Unsubscriber} (function or object with the `unsubscribe` method) that can be used to unregister and stop receiving notifications of store value changes.
+   * @returns The {@link UnsubscribeFunction} or {@link UnsubscribeObject} that can be used to unsubscribe (stop state change notifications).
+   */
   subscribe(subscriber: Subscriber<T>): Unsubscriber;
 }
 
+/**
+ * This interface augments the base {@link SubscribableStore} interface with the Angular-specific `OnDestroy` callback. The {@link Readable} stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed.
+ */
 export interface Readable<T> extends SubscribableStore<T>, OnDestroy {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
 }
 
+/**
+ * A function that can be used to update store's value. This function is called with the current value and should return new store value.
+ */
+export type Updater<T> = (value: T) => T;
+
+/**
+ * Builds on top of {@link Readable} and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
+ *
+ * ```typescript
+ * // reset counter's store value to 0 by using the {@link Writable.set} method
+ * counterStore.set(0);
+ *
+ * // increment counter's store value by using the {@link Writable.update} method
+ * counterStore.update(currentValue => currentValue + 1);
+ * ```
+ */
 export interface Writable<T> extends Readable<T> {
+  /**
+   * Replaces store's state with the provided value.
+   * @param value - value to be used as the new state of a store.
+   */
   set(value: T): void;
+
+  /**
+   * Updates store's state by using an {@link Updater} function.
+   * @param updater - a function that takes the current state as an argument and returns the new state.
+   */
   update(updater: Updater<T>): void;
 }
 
@@ -79,12 +135,15 @@ function notEqual(a: any, b: any): boolean {
 }
 
 /**
+ * A utility function to get the current value from a given store.
+ * It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after.
  *
- * @param store - Get the current value from a store
+ * @param store - a store from which the current value is retrieved.
+ *
  * @example
  * ```typescript
  * const myStore = writable(1);
- * get(myStore); // returns 1
+ * console.log(get(myStore)); // logs 1
  * ```
  */
 export function get<T>(store: SubscribableStore<T>): T {
@@ -94,36 +153,34 @@ export function get<T>(store: SubscribableStore<T>): T {
 }
 
 /**
- *
- * Base class of a store, from which all application store can inherit to create custom stores and manage reactive data
+ * Base class that can be extended to easily create a custom {@link Readable} store.
  *
  * @example
  * ```typescript
  * class CounterStore extends Store {
- *    setCounter(value) {
- *      this.set(value)
+ *    constructor() {
+ *      super(1); // initial value
+ *    }
+ *
+ *    reset() {
+ *      this.set(0);
  *    }
  *
  *    increment() {
- *      this.update((value) => value + 1);
- *    }
- *
- *    decrement() {
- *      this.update((value) => value - 1);
+ *      this.update(value => value + 1);
  *    }
  * }
  *
- * const store = CounterStore(1);
+ * const store = new CounterStore(1);
  *
- * // Output 1, as it's the initial value
+ * // logs 1 (initial value) upon subscription
  * const unsubscribe = store.subscribe((value) => {
- *    // Subscriber function called each time the store data changes
- *    console.log('Store value', value);
+ *    console.log(value);
  * });
- * store.setCounter(2); // Output 2
- * store.increment(); // Output 3
+ * store.increment(); // logs 2
+ * store.reset(); // logs 0
  *
- * unsubscribe(); // Stop subscription
+ * unsubscribe(); // stops notifications and corresponding logging
  * ```
  */
 @Injectable()
@@ -150,11 +207,10 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   /**
-   * Set a new value in the store.
-   * If the value is an object, or if the value is a primitive and has changed, all the subscribers will be called.
+   * Replaces store's state with the provided value.
+   * Equivalent of {@link Writable.set}, but internal to the store.
    *
-   * @param value - The new store value
-   *
+   * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
     if (notEqual(this._value, value)) {
@@ -175,35 +231,10 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   /**
-   * Allow to update the store value
-   * @param updater - Function called with the current value of the store. It must return the new store value.
+   * Updates store's state by using an {@link Updater} function.
+   * Equivalent of {@link Writable.update}, but internal to the store.
    *
-   * @example
-   * ```typescript
-   * // With a custom api
-   * class CounterStore extends Store {
-   *    increment() {
-   *      this.update((counter) => counter + 1)
-   *    }
-   * }
-   *
-   * const counterStore = new CounterStore(0);
-   * counterStore.increment();
-   * ```
-   *
-   * @example
-   * ```typescript
-   * // Generic store which exposes 'update', but keep 'set' private
-   * class CounterStore extends Store {
-   *    public update(fn) {
-   *      super.update(fn);
-   *    }
-   * }
-   *
-   * const counterStore = new CounterStore(0);
-   * counterStore.update((counter) => counter + 1);
-   * ```
-   *
+   * @param updater - a function that takes the current state as an argument and returns the new state.
    */
   protected update(updater: Updater<T>): void {
     this.set(updater(this._value));
@@ -219,38 +250,25 @@ export abstract class Store<T> implements Readable<T> {
    * ```typescript
    * class CustomStore extends Store {
    *    onUse() {
-   *      console.log('This store is subscribed');
+   *      console.log('Got the fist subscriber!');
    *      return () => {
-   *        console.log('No more subscriber');
-   *      }
+   *        console.log('All subscribers are gone...');
+   *      };
    *    }
    * }
    *
    * const store = new CustomStore();
-   * const unsubscribe = store.subscribe(() => {}); // Output 'This store is subscribed'
-   * unsubscribe(); // Output 'No more subscriber'
+   * const unsubscribe1 = store.subscribe(() => {}); // logs 'Got the fist subscriber!'
+   * const unsubscribe2 = store.subscribe(() => {}); // nothing is logged as we've got one subscriber already
+   * unsubscribe1(); // nothing is logged as we still have one subscriber
+   * unsubscribe2(); // logs 'All subscribers are gone...'
    * ```
    */
   protected onUse(): Unsubscriber | void {}
 
   /**
-   *
-   * @param subscriber - Function synchronously called with the current store value. It is called each time the store changes.
-   * It returns an unsubscribe object to stop the subscription
-   *
-   * @example
-   *
-   * ```typescript
-   * const myStore = new WritableStore(1)
-   * const unsubscribe = myStore.subscribe((storeValue) => {
-   *    console.log(storeValue); // output 1 in the console.
-   * });
-   *
-   * myStore.set(2) // output 2 in the console.
-   * unsubscribe();
-   * myStore.set(3) // no console output.
-   * ```
-   *
+   * Default Implementation of the {@link SubscribableStore.subscribe}, not meant to be overridden.
+   * @param subscriber - see {@link SubscribableStore.subscribe}
    */
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
     const subscriberObject = toSubscriberObject(subscriber);
@@ -283,20 +301,20 @@ export abstract class Store<T> implements Readable<T> {
   }
 }
 
-/**
- * Interface representing an argument of a function passed as a second argument to the store creation shorthands (readable, writable).
- */
-interface OnUseArgument<T> {
+export interface OnUseArgument<T> {
   (value: T): void;
   set: (value: T) => void;
   update: (updater: Updater<T>) => void;
 }
 
 /**
- * A convenience function to create stores that can't be modified from "outside" (that is, API of this store don't expose any state mutation methods).
+ * A convenience function to create {@link Readable} store instances.
+ * @param value - Initial value of a readable store.
+ * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
+ * (but not called when the number of subscribers changes from 1 to 2, ...).
+ * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
  * @example
- *
  * ```typescript
  * const clock = readable("00:00", setState => {
  *   const intervalID = setInterval(() => {
@@ -307,11 +325,6 @@ interface OnUseArgument<T> {
  *   return () => clearInterval(intervalID);
  * });
  * ```
- *
- * @param value - Initial value of a readable store.
- * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
- * (but not called when the number of subscribers changes from 1 to 2, ...).
- * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  */
 export function readable<T>(
   value: T,
@@ -344,28 +357,18 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
 }
 
 /**
- * Generic store, exposing set and update functionality.
- * It is used with a functional style, e.g. const store = writable('');
- * @param value - Initial value
+ * A convenience function to create {@link Writable} store instances.
+ * @param value - initial value of a new writable store.
  * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
  * (but not called when the number of subscribers changes from 1 to 2, ...).
  * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
  * @example
- *
  * ```typescript
- * const store = writable('', () => {
- *    console.log('This store is subscribed');
- *    return () => {
- *      console.log('No more subscriber');
- *    }
- * });
+ * const x = writable(0);
  *
- *
- * const unsubscribe = store.subscribe((object) => object) // Output 'This store is subscribed';
- * store.set({count: 1});
- * store.update((object) => {object.count++; return object});
- * unsubscribe(); // Output 'No more subscriber';
+ * x.update(v => v + 1); // increment
+ * x.set(0); // reset back to the default value
  * ```
  */
 export function writable<T>(
@@ -406,35 +409,6 @@ function isSyncDeriveFn<T, S>(fn: DeriveFn<T, S>): fn is SyncDeriveFn<T, S> {
   return fn.length <= 1;
 }
 
-/**
- *
- * Derived store, which compute values based on the values of one or more stores (they can also be derived stores).
- * Each time a store change, the 'derive' method is run with the store value
- * (or an array of store values if the derived store is based on an array of stores),
- * which allow to set the derived store value with 'this.set'.
- *
- * An initial value must be provided, and will be used if the derived value is set asynchronously
- *
- * @example
- *
- * ```typescript
- * class TotalStore extends DerivedStore<number, Readable<{a: number, b: number}>> {
- *
- *    derive(storeValue: {a: number, b: number}) {
- *       this.set(storeValue.a + storeValue.b);
- *    }
- * }
- *
- * const store = writable({a: 1, b: 2});
- * const computed = new TotalStore(store, 0);
- *
- * // Will output : 'Computed value: 3'
- * computed.subscribe((value) => {
- *    console.log('Computed value:', value)
- * })
- * ```
- *
- */
 @Injectable()
 export abstract class DerivedStore<
   T,
@@ -497,12 +471,25 @@ export abstract class DerivedStore<
 }
 
 /**
- * Derives a store from one or more other stores. Whenever those dependencies change, the deriveFn runs.
- * This is the functional style of a {@link DerivedStore}
+ * A convenience function to create a new store with a state computed from the latest values of dependent stores.
+ * Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state.
  *
- * @param stores - store or array of stores
- * @param deriveFn - Callback run with the store value or the array of store values
+ * @param stores - a single store or an array of dependent stores
+ * @param deriveFn - a function that is used to compute a new state based on the latest values of dependent stores
  *
+ * @example
+ * ```typescript
+ * const x$ = writable(2);
+ * const y$ = writable(3);
+ * const sum$ = derived([x$, $y], ([x, y]) => x + y);
+ *
+ * // will log 5 upon subscription
+ * sum$.subscribe((value) => {
+ *    console.log(value)
+ * });
+ *
+ * x$.set(3); // will re-evaluate the `([x, y]) => x + y` function and log 6 as this is the new state of the derived store
+ * ```
  */
 export function derived<T, S extends SubscribableStores>(
   stores: S,
