@@ -19,6 +19,7 @@
     "@typescript-eslint/parser": "^4.5.0",
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.14.0",
+    "gh-pages": "^3.1.0",
     "husky": "^4.3.0",
     "jasmine-core": "~3.6.0",
     "jasmine-spec-reporter": "~5.0.0",
@@ -43,7 +44,8 @@
     "build": "tsc",
     "check-format": "prettier --check .",
     "api": "api-extractor run",
-    "docs": "api-documenter markdown -i temp -o dist/docs"
+    "docs": "api-documenter markdown -i temp -o dist/docs",
+    "docs-publish": "gh-pages -d dist/docs"
   },
   "husky": {
     "hooks": {
