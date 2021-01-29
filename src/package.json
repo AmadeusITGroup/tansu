@@ -6,6 +6,15 @@
     "state management",
     "Angular"
   ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmadeusITGroup/ngx-tansu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmadeusITGroup/ngx-tansu/issues"
+  },
+  "homepage": "https://github.com/AmadeusITGroup/ngx-tansu#readme",
   "peerDependencies": {
     "@angular/core": "^11.1.0"
   }
