@@ -45,7 +45,8 @@
     "check-format": "prettier --check .",
     "api": "api-extractor run",
     "docs": "api-documenter markdown -i temp -o dist/docs",
-    "docs-publish": "gh-pages -d dist/docs"
+    "docs-publish": "gh-pages -d dist/docs",
+    "package": "cp README.md src/package.json src/.npmignore dist/src"
   },
   "husky": {
     "hooks": {
