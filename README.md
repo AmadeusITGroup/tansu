@@ -70,7 +70,7 @@ export class AppComponent {
 
 While being fairly minimal, this example demonstrates most of the ngx-tansu APIs. 
 
-Check the [documentation](http://todo) for the complete API and more usage examples.
+Check the [documentation](http://amadeusitgroup.github.io/ngx-tansu/) for the complete API and more usage examples.
 
 ## Contributing to the project
 
