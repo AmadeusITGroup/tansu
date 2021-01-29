@@ -2,6 +2,6 @@
   "extends": "./tsconfig.base",
   "compilerOptions": {
     "experimentalDecorators": true,
-    "module": "CommonJS"
+    "module": "ES2015"
   }
 }
