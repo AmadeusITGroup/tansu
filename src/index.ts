@@ -307,6 +307,25 @@ export interface OnUseArgument<T> {
   update: (updater: Updater<T>) => void;
 }
 
+const noopUnsubscribe = () => {};
+noopUnsubscribe.unsubscribe = noopUnsubscribe;
+
+/**
+ * A convenience function to create an optimized constant store (i.e. which never changes
+ * its value). It does not keep track of its subscribers.
+ * @param value - value of the store, which will never change
+ */
+function constStore<T>(value: T): Readable<T> {
+  return {
+    subscribe(subscriber: Subscriber<T>) {
+      toSubscriberObject(subscriber).next(value);
+      return noopUnsubscribe;
+    },
+    [symbolObservable]: returnThis,
+    ngOnDestroy: noop,
+  };
+}
+
 /**
  * A convenience function to create {@link Readable} store instances.
  * @param value - Initial value of a readable store.
@@ -330,6 +349,10 @@ export function readable<T>(
   value: T,
   onUseFn: (arg: OnUseArgument<T>) => void | Unsubscriber = noop
 ): Readable<T> {
+  if (onUseFn === noop) {
+    // special optimized case
+    return constStore(value);
+  }
   const ReadableStoreWithOnUse = class extends Store<T> {
     protected onUse() {
       const setFn = (v: T) => this.set(v);
