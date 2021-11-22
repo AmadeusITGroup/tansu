@@ -1,6 +1,6 @@
 {
   "name": "ngx-tansu",
-  "version": "0.0.1-dryrun",
+  "version": "0.0.2-alpha",
   "description": "ngx-tansu is a lightweight, push-based state management library for Angular. It borrows the ideas and APIs originally designed and implemented by Svelte stores",
   "keywords": [
     "state management",
@@ -16,6 +16,6 @@
   },
   "homepage": "https://github.com/AmadeusITGroup/ngx-tansu#readme",
   "peerDependencies": {
-    "@angular/core": "^11.1.0"
+    "@angular/core": "^13.0.0"
   }
 }
