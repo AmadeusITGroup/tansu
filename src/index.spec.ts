@@ -1,4 +1,13 @@
-import { derived, DerivedStore, Store, SubscribableStore, writable, get, readable } from './index';
+import {
+  derived,
+  DerivedStore,
+  Store,
+  SubscribableStore,
+  writable,
+  get,
+  readable,
+  batch,
+} from './index';
 import { from } from 'rxjs';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -219,6 +228,20 @@ describe('stores', () => {
       unsubscribe.unsubscribe(); // call unsubscribe as rxjs would do
       store.set(2);
       expect(values).toEqual([0, 1]); // unsubscribe worked, value 2 was not received
+    });
+
+    it('should work when changing a store in the listener of the store', () => {
+      const store = writable(0);
+      const calls: number[] = [];
+      const unsubscribe = store.subscribe((n) => {
+        calls.push(n);
+        if (n < 10) {
+          store.set(n + 1);
+        }
+      });
+      expect(calls).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(get(store)).toEqual(10);
+      unsubscribe();
     });
 
     it('should be compatible with rxjs "from" (writable)', () => {
@@ -679,6 +702,116 @@ describe('stores', () => {
       expect(deriveFn).not.toHaveBeenCalled();
       expect(cleanUpFn).toHaveBeenCalledTimes(1);
       expect(cleanUpFn).toHaveBeenCalledWith(3);
+    });
+  });
+
+  describe('batch', () => {
+    it('should work with two writables and a derived', () => {
+      const firstName = writable('Arsène');
+      const lastName = writable('Lupin');
+      const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
+      const values: string[] = [];
+      const unsubscribe = fullName.subscribe((value) => values.push(value));
+      const expectedRes = {};
+      const res = batch(() => {
+        firstName.set('Sherlock');
+        lastName.set('Holmes');
+        return expectedRes;
+      });
+      expect(values).toEqual(['Arsène Lupin', 'Sherlock Holmes']);
+      expect(res).toBe(expectedRes);
+      unsubscribe();
+    });
+
+    it('should not call listeners multiple times', () => {
+      const store = writable(0);
+      const calls: number[] = [];
+      const unsubscribe = store.subscribe((n) => calls.push(n));
+      expect(calls).toEqual([0]);
+      batch(() => {
+        store.set(1);
+        store.set(2);
+        expect(calls).toEqual([0]);
+      });
+      expect(calls).toEqual([0, 2]);
+      unsubscribe();
+    });
+
+    it('should allow nested calls', () => {
+      const store = writable(0);
+      const calls: number[] = [];
+      const unsubscribe = store.subscribe((n) => calls.push(n));
+      expect(calls).toEqual([0]);
+      batch(() => {
+        store.set(1);
+        store.set(2);
+        batch(() => {
+          store.set(3);
+          store.set(4);
+        });
+        store.set(5);
+        batch(() => {
+          store.set(6);
+          store.set(7);
+        });
+        expect(calls).toEqual([0]);
+      });
+      expect(calls).toEqual([0, 7]);
+      unsubscribe();
+    });
+
+    it('should still call multiple times the listeners registered multiple times', () => {
+      const store = writable(0);
+      const calls: number[] = [];
+      const fn = (n: number) => calls.push(n);
+      const unsubscribe1 = store.subscribe(fn);
+      const unsubscribe2 = store.subscribe(fn);
+      expect(calls).toEqual([0, 0]);
+      batch(() => {
+        store.set(1);
+        store.set(2);
+        expect(calls).toEqual([0, 0]);
+      });
+      expect(calls).toEqual([0, 0, 2, 2]);
+      unsubscribe1();
+      unsubscribe2();
+    });
+
+    it('should not call invalidate multiple times', () => {
+      const store = writable(0);
+      let invalidateCalls = 0;
+      const unsubscribe = store.subscribe({
+        next: () => {},
+        invalidate: () => {
+          invalidateCalls++;
+        },
+      });
+      expect(invalidateCalls).toEqual(0);
+      batch(() => {
+        expect(invalidateCalls).toEqual(0);
+        store.set(1);
+        expect(invalidateCalls).toEqual(1);
+        store.set(2);
+        expect(invalidateCalls).toEqual(1);
+      });
+      expect(invalidateCalls).toEqual(1);
+      unsubscribe();
+    });
+
+    it('should not call an unregistered listener', () => {
+      const store = writable(0);
+      const calls: number[] = [];
+      const fn = (n: number) => calls.push(n);
+      const unsubscribe = store.subscribe(fn);
+      expect(calls).toEqual([0]);
+      batch(() => {
+        store.set(1);
+        store.set(2);
+        expect(calls).toEqual([0]);
+        unsubscribe();
+        store.set(3);
+      });
+      expect(calls).toEqual([0]);
     });
   });
 });
