@@ -1,5 +1,3 @@
-import { Injectable, OnDestroy } from '@angular/core';
-
 const symbolObservable = (typeof Symbol === 'function' && Symbol.observable) || '@@observable';
 
 /**
@@ -58,8 +56,9 @@ export interface SubscribableStore<T> {
 /**
  * This interface augments the base {@link SubscribableStore} interface with the Angular-specific `OnDestroy` callback. The {@link Readable} stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed.
  */
-export interface Readable<T> extends SubscribableStore<T>, OnDestroy {
+export interface Readable<T> extends SubscribableStore<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
+  ngOnDestroy(): void;
 }
 
 /**
@@ -183,7 +182,6 @@ export function get<T>(store: SubscribableStore<T>): T {
  * unsubscribe(); // stops notifications and corresponding logging
  * ```
  */
-@Injectable()
 export abstract class Store<T> implements Readable<T> {
   private _subscribers = new Set<SubscriberObject<T>>();
   private _cleanupFn: null | Unsubscriber = null;
@@ -364,7 +362,6 @@ export function readable<T>(
   return asReadable(new ReadableStoreWithOnUse(value));
 }
 
-@Injectable()
 class WritableStore<T> extends Store<T> implements Writable<T> {
   constructor(value: T) {
     super(value);
@@ -432,7 +429,6 @@ function isSyncDeriveFn<T, S>(fn: DeriveFn<T, S>): fn is SyncDeriveFn<T, S> {
   return fn.length <= 1;
 }
 
-@Injectable()
 export abstract class DerivedStore<
   T,
   S extends SubscribableStores = SubscribableStores
