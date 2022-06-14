@@ -1,6 +1,6 @@
 import { derived, DerivedStore, Store, SubscribableStore, writable, get, readable } from './index';
 import { from } from 'rxjs';
-import { Component } from '@angular/core';
+import { Component, Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 describe('stores', () => {
@@ -299,6 +299,43 @@ describe('stores', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
       fixture.destroy();
+    });
+
+    it('should call ngOnDestroy when injected class extending Store is destroyed', () => {
+      @Injectable()
+      class MyStore extends Store<number> {
+        constructor() {
+          super(0);
+        }
+        increment() {
+          this.update((value) => value + 1);
+        }
+      }
+
+      @Component({
+        template: `Value: {{ store | async }}`,
+        providers: [MyStore],
+      })
+      class MyComponent {
+        constructor(public store: MyStore) {}
+      }
+
+      TestBed.configureTestingModule({
+        declarations: [MyComponent],
+      });
+      const fixture = TestBed.createComponent(MyComponent);
+      const componentInstance = fixture.componentInstance;
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toBe('Value: 0');
+      componentInstance.store.increment();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toBe('Value: 1');
+      const spySubscriberClear = spyOn(
+        (componentInstance.store as any)._subscribers as Set<any>,
+        'clear'
+      );
+      fixture.destroy();
+      expect(spySubscriberClear).toHaveBeenCalled();
     });
   });
 
