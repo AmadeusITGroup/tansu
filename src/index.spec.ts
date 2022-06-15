@@ -244,6 +244,34 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('should not call again listeners when only revalidating', () => {
+      class BasicStore extends Store<object> {
+        public invalidate(): void {
+          super.invalidate();
+        }
+        public revalidate(): void {
+          super.revalidate();
+        }
+        public set(value: object): void {
+          super.set(value);
+        }
+      }
+      const initialValue = {};
+      const newValue = {};
+      const store = new BasicStore(initialValue);
+      const calls: object[] = [];
+      const unsubscribe = store.subscribe((v) => calls.push(v));
+      expect(calls.length).toBe(1);
+      expect(calls[0]).toBe(initialValue);
+      store.invalidate();
+      store.revalidate();
+      expect(calls.length).toBe(1);
+      store.set(newValue);
+      expect(calls.length).toBe(2);
+      expect(calls[1]).toBe(newValue);
+      unsubscribe();
+    });
+
     it('should be compatible with rxjs "from" (writable)', () => {
       const store = writable(0);
       const observable = from(store);
@@ -651,16 +679,38 @@ describe('stores', () => {
       const a = writable(0);
       const b = derived(a, (a) => `b${a}`);
       const c = derived(a, (a) => `c${a}`);
-      const d = derived([b, c], ([b, c]) => `${b}${c}`);
+      const dFn = jasmine.createSpy('dFn', ([b, c]) => `${b}${c}`).and.callThrough();
+      const d = derived([b, c], dFn);
 
       const values: string[] = [];
 
       const unsubscribe = d.subscribe((value) => {
         values.push(value);
       });
+      expect(dFn).toHaveBeenCalledTimes(1);
       expect(values).toEqual(['b0c0']);
       a.set(1);
+      expect(dFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual(['b0c0', 'b1c1']);
+      unsubscribe();
+    });
+
+    it('should prevent the asymmetric diamond dependency problem', () => {
+      const a = writable(0);
+      const b = derived(a, (a) => `b${a}`);
+      const cFn = jasmine.createSpy('cFn', ([a, b]) => `${a}${b}`).and.callThrough();
+      const c = derived([a, b], cFn);
+
+      const values: string[] = [];
+
+      const unsubscribe = c.subscribe((value) => {
+        values.push(value);
+      });
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['0b0']);
+      a.set(1);
+      expect(cFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['0b0', '1b1']);
       unsubscribe();
     });
 
@@ -832,6 +882,329 @@ describe('stores', () => {
         expect(invalidateCalls).toEqual(1);
       });
       expect(invalidateCalls).toEqual(1);
+      unsubscribe();
+    });
+
+    it('should not call again listeners when the value finally did not change', () => {
+      const a = writable(0);
+      const values: number[] = [];
+      const unsubscribe = a.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([0]);
+      batch(() => {
+        a.set(0);
+        expect(get(a)).toEqual(0);
+        a.set(1);
+        expect(get(a)).toEqual(1);
+        a.set(0);
+        expect(get(a)).toEqual(0);
+      });
+      expect(values).toEqual([0]);
+      expect(get(a)).toEqual(0);
+      batch(() => {
+        a.set(1);
+        expect(get(a)).toEqual(1);
+        a.set(0);
+        expect(get(a)).toEqual(0);
+        a.set(1);
+        expect(get(a)).toEqual(1);
+        expect(values).toEqual([0]);
+      });
+      expect(values).toEqual([0, 1]);
+      expect(get(a)).toEqual(1);
+      unsubscribe();
+    });
+
+    it('should not call again listeners when the original value finally did not change with a derived', () => {
+      const a = writable(0);
+      const b = derived(a, (a) => a + 1);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([1]);
+      batch(() => {
+        a.set(0);
+        expect(get(b)).toEqual(1);
+        a.set(1);
+        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        a.set(0);
+        expect(get(b)).toEqual(1);
+      });
+      expect(values).toEqual([1]);
+      expect(get(b)).toEqual(1);
+      batch(() => {
+        a.set(1);
+        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        a.set(0);
+        expect(get(b)).toEqual(1);
+        a.set(1);
+        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        expect(values).toEqual([1]);
+      });
+      expect(values).toEqual([1, 2]);
+      expect(get(b)).toEqual(2);
+      unsubscribe();
+    });
+
+    it('should not call again listeners when the derived value finally did not change', () => {
+      const a = writable(0);
+      const isEven = derived(a, (a) => a % 2 === 0);
+      const values: boolean[] = [];
+      const unsubscribe = isEven.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([true]);
+      expect(get(isEven)).toEqual(true);
+      batch(() => {
+        a.set(0); // isEven = true
+        expect(get(isEven)).toEqual(true);
+        a.set(1); // isEven = false (without batch)
+        expect(get(isEven)).toEqual(true); // batch prevents the current value from being computed
+        a.set(2); // isEven = true again
+        expect(get(isEven)).toEqual(true);
+      });
+      expect(values).toEqual([true]);
+      expect(get(isEven)).toEqual(true);
+      batch(() => {
+        a.set(3); // isEven = false (without batch)
+        expect(get(isEven)).toEqual(true); // batch prevents the current value from being computed
+        a.set(4); // isEven = true
+        expect(get(isEven)).toEqual(true);
+        a.set(5); // isEven = false
+        expect(get(isEven)).toEqual(true);
+        expect(values).toEqual([true]);
+      });
+      expect(values).toEqual([true, false]);
+      expect(get(isEven)).toEqual(false);
+      unsubscribe();
+    });
+
+    it('should work when first subscribing to a store inside batch', () => {
+      const a = writable(0);
+      const values: number[] = [];
+      let unsubscribe!: () => void;
+      batch(() => {
+        a.set(1);
+        unsubscribe = a.subscribe((v) => values.push(v));
+        expect(values).toEqual([1]);
+      });
+      expect(values).toEqual([1]);
+      a.set(2);
+      expect(values).toEqual([1, 2]);
+      unsubscribe();
+    });
+
+    it('should work when doing a second subscription to a store inside batch', () => {
+      const a = writable(0);
+      const values1: number[] = [];
+      const values2: number[] = [];
+      const unsubscribe1 = a.subscribe((v) => values1.push(v));
+      let unsubscribe2!: () => void;
+      expect(values1).toEqual([0]);
+      batch(() => {
+        a.set(1);
+        unsubscribe2 = a.subscribe((v) => values2.push(v));
+        expect(values1).toEqual([0]);
+        expect(values2).toEqual([1]);
+      });
+      expect(values1).toEqual([0, 1]);
+      expect(values2).toEqual([1]);
+      a.set(2);
+      expect(values1).toEqual([0, 1, 2]);
+      expect(values2).toEqual([1, 2]);
+      unsubscribe1();
+      unsubscribe2();
+    });
+
+    it('should work when first subscribing to a derived store inside batch', () => {
+      const a = writable(0);
+      const b = derived(a, (a) => a + 1);
+      const values: number[] = [];
+      let unsubscribe!: () => void;
+      batch(() => {
+        a.set(1);
+        unsubscribe = b.subscribe((v) => values.push(v));
+        expect(values).toEqual([2]);
+      });
+      expect(values).toEqual([2]);
+      a.set(2);
+      expect(values).toEqual([2, 3]);
+      unsubscribe();
+    });
+
+    it('should work when doing a second subscription to a derived store inside batch', () => {
+      const a = writable(0);
+      const b = derived(a, (a) => a + 1);
+      const values1: number[] = [];
+      const values2: number[] = [];
+      const unsubscribe1 = b.subscribe((v) => values1.push(v));
+      expect(values1).toEqual([1]);
+      let unsubscribe2!: () => void;
+      batch(() => {
+        a.set(1);
+        unsubscribe2 = b.subscribe((v) => values2.push(v));
+        expect(values1).toEqual([1]);
+        expect(values2).toEqual([1]); // gets the previous value of store b to avoid extra computation before the end of batch
+      });
+      expect(values1).toEqual([1, 2]);
+      expect(values2).toEqual([1, 2]);
+      a.set(2);
+      expect(values1).toEqual([1, 2, 3]);
+      expect(values2).toEqual([1, 2, 3]);
+      unsubscribe1();
+      unsubscribe2();
+    });
+
+    it('should work when doing a first subscription to a derived store of an already subscribed store inside batch', () => {
+      const a = writable(0);
+      const b = derived(a, (a) => a + 1, -1);
+      const values1: number[] = [];
+      const values2: number[] = [];
+      const unsubscribe1 = a.subscribe((v) => values1.push(v));
+      let unsubscribe2!: () => void;
+      expect(values1).toEqual([0]);
+      batch(() => {
+        a.set(1);
+        unsubscribe2 = b.subscribe((v) => values2.push(v));
+        expect(values1).toEqual([0]);
+        expect(values2).toEqual([-1]); // gets the initial value of store b to avoid temporary computation
+      });
+      expect(values1).toEqual([0, 1]);
+      expect(values2).toEqual([-1, 2]);
+      a.set(2);
+      expect(values1).toEqual([0, 1, 2]);
+      expect(values2).toEqual([-1, 2, 3]);
+      unsubscribe1();
+      unsubscribe2();
+    });
+
+    it('should work when doing a first subscription to a derived store of two stores with an already subscribed one inside batch', () => {
+      const a = writable(0);
+      const b = writable(0);
+      const c = derived([a, b], ([a, b]) => `a${a}b${b}`, 'init');
+      const values1: number[] = [];
+      const values2: string[] = [];
+      const unsubscribe1 = a.subscribe((v) => values1.push(v));
+      expect(values1).toEqual([0]);
+      let unsubscribe2!: () => void;
+      batch(() => {
+        a.set(1);
+        b.set(1);
+        unsubscribe2 = c.subscribe((v) => values2.push(v));
+        expect(values2).toEqual(['init']); // gets the initial value of store c to avoid a temporary computation
+        a.set(2);
+        b.set(2);
+        expect(values1).toEqual([0]);
+        expect(values2).toEqual(['init']);
+      });
+      expect(values1).toEqual([0, 2]);
+      expect(values2).toEqual(['init', 'a2b2']);
+      a.set(3);
+      expect(values1).toEqual([0, 2, 3]);
+      expect(values2).toEqual(['init', 'a2b2', 'a3b2']);
+      unsubscribe1();
+      unsubscribe2();
+    });
+
+    it('should work with a derived store of a derived store that is invalidated but finally does not change', () => {
+      const a = writable(0);
+      const b = writable(0);
+      const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
+      const c = derived(a, cFn);
+      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const d = derived([b, c], dFn);
+      const values: string[] = [];
+      const unsubscribe = d.subscribe((v) => values.push(v));
+      expect(values).toEqual(['b0ca0']);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(1);
+        a.set(0);
+        b.set(1);
+        expect(cFn).toHaveBeenCalledTimes(1);
+        expect(dFn).toHaveBeenCalledTimes(1);
+        expect(values).toEqual(['b0ca0']);
+      });
+      expect(cFn).toHaveBeenCalledTimes(1); // should not call again cFn as a went back to its initial value
+      expect(dFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['b0ca0', 'b1ca0']);
+      a.set(2);
+      expect(cFn).toHaveBeenCalledTimes(2);
+      expect(dFn).toHaveBeenCalledTimes(3);
+      expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
+      unsubscribe();
+    });
+
+    it('should work with a derived store of a derived store that is invalidated and finally changes', () => {
+      const a = writable(0);
+      const b = writable(0);
+      const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
+      const c = derived(a, cFn);
+      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const d = derived([b, c], dFn);
+      const values: string[] = [];
+      const unsubscribe = d.subscribe((v) => values.push(v));
+      expect(values).toEqual(['b0ca0']);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(1);
+        a.set(0);
+        b.set(1);
+        a.set(1);
+        expect(cFn).toHaveBeenCalledTimes(1);
+        expect(dFn).toHaveBeenCalledTimes(1);
+        expect(values).toEqual(['b0ca0']);
+      });
+      expect(cFn).toHaveBeenCalledTimes(2);
+      expect(dFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['b0ca0', 'b1ca1']);
+      a.set(2);
+      expect(cFn).toHaveBeenCalledTimes(3);
+      expect(dFn).toHaveBeenCalledTimes(3);
+      expect(values).toEqual(['b0ca0', 'b1ca1', 'b1ca2']);
+      unsubscribe();
+    });
+
+    it('should work with a derived store of an async derived store that is invalidated but does not set any new value', () => {
+      const a = writable(0);
+      const b = writable(0);
+      const cFn = jasmine
+        .createSpy('cFn', (a, set) => {
+          // set is only called if a is even, otherwise the old value is kept
+          if (a % 2 === 0) set(`a${a}`);
+        })
+        .and.callThrough();
+      const c = derived(a, cFn, 'i');
+      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const d = derived([b, c], dFn);
+      const values: string[] = [];
+      const unsubscribe = d.subscribe((v) => values.push(v));
+      expect(values).toEqual(['b0ca0']);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(1);
+        a.set(0);
+        a.set(1); // will be ignored by c
+        expect(cFn).toHaveBeenCalledTimes(1);
+        expect(dFn).toHaveBeenCalledTimes(1);
+        expect(values).toEqual(['b0ca0']);
+      });
+      expect(cFn).toHaveBeenCalledTimes(2); // called again because a changed
+      expect(dFn).toHaveBeenCalledTimes(1); // not called again because c did not change
+      expect(values).toEqual(['b0ca0']);
+      b.set(1);
+      expect(cFn).toHaveBeenCalledTimes(2); // not called again because a did not change
+      expect(dFn).toHaveBeenCalledTimes(2); // called again because b changed
+      expect(values).toEqual(['b0ca0', 'b1ca0']);
+      a.set(2);
+      expect(cFn).toHaveBeenCalledTimes(3); // called again because a changed
+      expect(dFn).toHaveBeenCalledTimes(3); // called again because c changed
+      expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
       unsubscribe();
     });
 
