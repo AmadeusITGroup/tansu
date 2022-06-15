@@ -113,14 +113,8 @@ const asReadable = <T>(store: Store<T>): Readable<T> => ({
   [symbolObservable]: returnThis,
 });
 
-const queue: [SubscriberFunction<any>, any][] = [];
-
-function processQueue() {
-  for (const [subscriberFn, value] of queue) {
-    subscriberFn(value);
-  }
-  queue.length = 0;
-}
+let willProcessQueue = false;
+const queue = new Map<SubscriberObject<any>, any>();
 
 const callUnsubscribe = (unsubscribe: Unsubscriber) =>
   typeof unsubscribe === 'function' ? unsubscribe() : unsubscribe.unsubscribe();
@@ -132,6 +126,50 @@ function notEqual(a: any, b: any): boolean {
   }
   return true;
 }
+
+/**
+ * Batches multiple changes to stores while calling the provided function,
+ * preventing derived stores from updating until the function returns,
+ * to avoid unnecessary recomputations.
+ * If a store is updated multiple times in the provided function, listeners
+ * of that store will only be called once when the provided function returns.
+ * It is possible to have nested calls of batch, in which case only the first
+ * (outer) call has an effect, inner calls only call the provided function.
+ *
+ * @param fn - a function that can update stores. Its return value is
+ * returned by the batch function.
+ *
+ * @example
+ * Using batch in the following example prevents logging the intermediate "Sherlock Lupin" value.
+ *
+ * ```typescript
+ * const firstName = writable('Arsène');
+ * const lastName = writable('Lupin');
+ * const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
+ * fullName.subscribe((name) => console.log(name)); // logs any change to fullName
+ * batch(() => {
+ *     firstName.set('Sherlock');
+ *     lastName.set('Holmes');
+ * });
+ * ```
+ */
+export const batch = <T>(fn: () => T): T => {
+  const needsProcessQueue = !willProcessQueue;
+  if (needsProcessQueue) {
+    willProcessQueue = true;
+  }
+  try {
+    return fn();
+  } finally {
+    if (needsProcessQueue) {
+      for (const [subscriberObject, value] of queue) {
+        queue.delete(subscriberObject);
+        subscriberObject.next(value);
+      }
+      willProcessQueue = false;
+    }
+  }
+};
 
 /**
  * A utility function to get the current value from a given store.
@@ -217,14 +255,15 @@ export abstract class Store<T> implements Readable<T> {
         // subscriber not yet initialized
         return;
       }
-      const needsProcessQueue = queue.length == 0;
-      for (const subscriber of this._subscribers) {
-        subscriber.invalidate();
-        queue.push([subscriber.next, value]);
-      }
-      if (needsProcessQueue) {
-        processQueue();
-      }
+      batch(() => {
+        for (const subscriber of this._subscribers) {
+          const needInvalidate = !queue.has(subscriber);
+          queue.set(subscriber, value);
+          if (needInvalidate) {
+            subscriber.invalidate();
+          }
+        }
+      });
     }
   }
 
@@ -278,6 +317,8 @@ export abstract class Store<T> implements Readable<T> {
 
     const unsubscribe = () => {
       const removed = this._subscribers.delete(subscriberObject);
+      subscriberObject.next = noop;
+      subscriberObject.invalidate = noop;
       if (removed && this._subscribers.size === 0) {
         this._stop();
       }
