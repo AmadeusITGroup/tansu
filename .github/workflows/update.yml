@@ -1,0 +1,25 @@
+name: update
+
+on:
+  schedule:
+    - cron: '0 3 2 * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set Node.js version
+        uses: actions/setup-node@v3
+        with:
+          node-version: '12.x'
+      - run: yarn install
+      - run: yarn upgrade --latest --caret
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@bd72e1b7922d417764d27d30768117ad7da78a0e # v4.0.2
+        with:
+          commit-message: Update all dependencies
+          branch: dependencies
+          title: Update all dependencies
+          body: Update all dependencies
