@@ -46,7 +46,7 @@
     "api": "api-extractor run",
     "docs": "api-documenter markdown -i temp -o dist/docs",
     "docs-publish": "gh-pages -d dist/docs",
-    "package": "cp README.md src/package.json src/.npmignore dist/src"
+    "package": "cp README.md src/package.json src/.npmignore dist/tsdoc-metadata.json dist/src"
   },
   "husky": {
     "hooks": {

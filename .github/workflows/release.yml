@@ -1,0 +1,39 @@
+name: release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: Version number (x.y.z)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '12.x'
+      - run: yarn --frozen-lockfile
+      - name: yarn version
+        working-directory: src
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          yarn version --new-version ${{ inputs.version }}
+      - run: git show HEAD
+      - run: yarn build
+      - run: yarn api
+      - run: yarn docs
+      - run: yarn package
+      - name: npm login
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          npm whoami
+      - run: npm publish
+        working-directory: dist/src
+      - name: npm logout
+        run: rm ~/.npmrc
+      - run: git push origin master v${{ inputs.version }}
+      - run: yarn docs-publish
