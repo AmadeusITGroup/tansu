@@ -3,3 +3,4 @@ dist
 temp
 coverage
 yarn-error.log 
+.angular

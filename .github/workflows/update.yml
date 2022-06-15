@@ -19,7 +19,7 @@ jobs:
       - name: Create pull request
         uses: peter-evans/create-pull-request@bd72e1b7922d417764d27d30768117ad7da78a0e # v4.0.2
         with:
-          commit-message: Update all dependencies
+          commit-message: 'chore: Update all dependencies'
           branch: dependencies
           title: Update all dependencies
           body: Update all dependencies
