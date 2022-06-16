@@ -24,6 +24,9 @@ jobs:
       - run: yarn lint
       - run: yarn check-format
       - run: yarn test
+      - uses: codecov/codecov-action@e3c560433a6cc60aec8812599b7844a7b4fa0d71 # v3.0.0
+        with:
+          file: coverage/lcov.info
       - run: yarn build
       - run: yarn api
       - run: yarn docs

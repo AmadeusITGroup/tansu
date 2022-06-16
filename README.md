@@ -1,4 +1,4 @@
-![build](https://github.com/AmadeusITGroup/ngx-tansu//workflows/ci/badge.svg)
+![build](https://github.com/AmadeusITGroup/ngx-tansu/workflows/ci/badge.svg) [![codecov](https://codecov.io/gh/AmadeusITGroup/ngx-tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/ngx-tansu)
 
 # ngx-tansu
 
