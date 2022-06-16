@@ -1,4 +1,11 @@
-const symbolObservable = (typeof Symbol === 'function' && Symbol.observable) || '@@observable';
+declare global {
+  interface SymbolConstructor {
+    readonly observable: symbol;
+  }
+}
+
+const symbolObservable: typeof Symbol.observable =
+  (typeof Symbol === 'function' && Symbol.observable) || ('@@observable' as any);
 
 /**
  * A callback invoked when a store value changes. It is called with the latest value of a given store.
@@ -10,6 +17,8 @@ export type SubscriberFunction<T> = (value: T) => void;
  */
 export interface SubscriberObject<T> {
   next: SubscriberFunction<T>;
+  error?: any;
+  complete?: any;
   invalidate: () => void;
 }
 
@@ -59,6 +68,7 @@ export interface SubscribableStore<T> {
 export interface Readable<T> extends SubscribableStore<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
   ngOnDestroy(): void;
+  [Symbol.observable](): Readable<T>;
 }
 
 /**
