@@ -1,3 +1,10 @@
+/**
+ * tansu is a lightweight, push-based state management library.
+ * It borrows the ideas and APIs originally designed and implemented by {@link https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md | Svelte stores}.
+ *
+ * @packageDocumentation
+ */
+
 declare global {
   interface SymbolConstructor {
     readonly observable: symbol;
@@ -13,11 +20,11 @@ const symbolObservable: typeof Symbol.observable =
 export type SubscriberFunction<T> = (value: T) => void;
 
 /**
- * A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the `next` method every time the store's state is changing.
+ * A partial {@link https://github.com/tc39/proposal-observable#api | observer} notified when a store value changes. A store will call the {@link SubscriberObject.next | next} method every time the store's state is changing.
  */
 export interface SubscriberObject<T> {
   /**
-   * A store will call the `next` method every time the store's state is changing.
+   * A store will call this method every time the store's state is changing.
    */
   next: SubscriberFunction<T>;
   /**
@@ -29,12 +36,12 @@ export interface SubscriberObject<T> {
    */
   complete?: any;
   /**
-   * A store will call the `pause` method when it knows that the value will be changed.
-   * A call to `pause` will be followed by a call to {@link SubscriberObject.next|next} or to {@link SubscriberObject.resume|resume}.
+   * A store will call this method when it knows that the value will be changed.
+   * A call to this method will be followed by a call to {@link SubscriberObject.next | next} or to {@link SubscriberObject.resume | resume}.
    */
   pause: () => void;
   /**
-   * A store will call the `resume` method if {@link SubscriberObject.pause|pause} was called previously
+   * A store will call this method if {@link SubscriberObject.pause | pause} was called previously
    * and the value finally did not need to change.
    */
   resume: () => void;
@@ -101,6 +108,8 @@ export type Updater<T> = (value: T) => T;
 
 /**
  * Builds on top of {@link Readable} and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
+ *
+ * @example
  *
  * ```typescript
  * // reset counter's store value to 0 by using the {@link Writable.set} method
@@ -177,8 +186,12 @@ function notEqual(a: any, b: any): boolean {
  * Batches multiple changes to stores while calling the provided function,
  * preventing derived stores from updating until the function returns,
  * to avoid unnecessary recomputations.
+ *
+ * @remarks
+ *
  * If a store is updated multiple times in the provided function, listeners
  * of that store will only be called once when the provided function returns.
+ *
  * It is possible to have nested calls of batch, in which case only the first
  * (outer) call has an effect, inner calls only call the provided function.
  *
@@ -309,11 +322,13 @@ export abstract class Store<T> implements Readable<T> {
   /**
    * Puts the store in the paused state, which means it will soon update its value.
    *
+   * @remarks
+   *
    * The paused state prevents derived stores (both direct and transitive) from recomputing their value
    * using the current value of this store.
    *
-   * There are two ways to put a store back into its normal state: calling {@link Store.set|set} to set a new
-   * value or calling {@link Store.resumeSubscribers|resumeSubscribers} to declare that finally the value does not need to be
+   * There are two ways to put a store back into its normal state: calling {@link Store.set | set} to set a new
+   * value or calling {@link Store.resumeSubscribers | resumeSubscribers} to declare that finally the value does not need to be
    * changed.
    *
    * Note that a store should not stay in the paused state for a long time, and most of the time
@@ -331,7 +346,11 @@ export abstract class Store<T> implements Readable<T> {
 
   /**
    * Puts the store back to the normal state without changing its value, if it was in the paused state
-   * (cf {@link Store.pauseSubscribers|pauseSubscribers}). Does nothing if the store was not in the paused state.
+   * (cf {@link Store.pauseSubscribers | pauseSubscribers}).
+   *
+   * @remarks
+   *
+   * Does nothing if the store was not in the paused state.
    */
   protected resumeSubscribers(): void {
     if (this._subscribersPaused) {
