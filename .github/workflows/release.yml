@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           npm whoami
-      - run: npm publish
+      - run: npm publish --access=public
         working-directory: dist/src
       - name: npm logout
         run: rm ~/.npmrc
