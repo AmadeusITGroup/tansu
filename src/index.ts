@@ -29,15 +29,15 @@ export interface SubscriberObject<T> {
    */
   complete?: any;
   /**
-   * A store will call the `invalidate` method when it knows that the value will be changed.
-   * A call to `invalidate` will be followed by a call to {@link SubscriberObject.next|next} or to {@link SubscriberObject.revalidate|revalidate}.
+   * A store will call the `pause` method when it knows that the value will be changed.
+   * A call to `pause` will be followed by a call to {@link SubscriberObject.next|next} or to {@link SubscriberObject.resume|resume}.
    */
-  invalidate: () => void;
+  pause: () => void;
   /**
-   * A store will call the `revalidate` method if {@link SubscriberObject.invalidate|invalidate} was called previously
+   * A store will call the `resume` method if {@link SubscriberObject.pause|pause} was called previously
    * and the value finally did not need to change.
    */
-  revalidate: () => void;
+  resume: () => void;
 }
 
 interface PrivateSubscriberObject<T> extends SubscriberObject<T> {
@@ -135,15 +135,15 @@ const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObje
   typeof subscriber === 'function'
     ? {
         next: subscriber.bind(null),
-        invalidate: noop,
-        revalidate: noop,
+        pause: noop,
+        resume: noop,
         _value: undefined,
         _valueIndex: 0,
       }
     : {
         next: bind(subscriber, 'next'),
-        invalidate: bind(subscriber, 'invalidate'),
-        revalidate: bind(subscriber, 'revalidate'),
+        pause: bind(subscriber, 'pause'),
+        resume: bind(subscriber, 'resume'),
         _value: undefined,
         _valueIndex: 0,
       };
@@ -269,7 +269,7 @@ export function get<T>(store: SubscribableStore<T>): T {
 export abstract class Store<T> implements Readable<T> {
   private _subscribers = new Set<PrivateSubscriberObject<T>>();
   private _cleanupFn: null | Unsubscriber = null;
-  private _invalidated = false;
+  private _subscribersPaused = false;
   private _valueIndex = 1;
 
   /**
@@ -291,7 +291,7 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   private [queueProcess](): void {
-    this._invalidated = false;
+    this._subscribersPaused = false;
     const valueIndex = this._valueIndex;
     const value = this._value;
     for (const subscriber of [...this._subscribers]) {
@@ -301,40 +301,40 @@ export abstract class Store<T> implements Readable<T> {
         subscriber.next(value);
       } else {
         subscriber._valueIndex = valueIndex;
-        subscriber.revalidate();
+        subscriber.resume();
       }
     }
   }
 
   /**
-   * Puts the store in the invalidated state, which means it will soon update its value.
+   * Puts the store in the paused state, which means it will soon update its value.
    *
-   * The invalidated state prevents derived stores (both direct and transitive) from recomputing their value
+   * The paused state prevents derived stores (both direct and transitive) from recomputing their value
    * using the current value of this store.
    *
    * There are two ways to put a store back into its normal state: calling {@link Store.set|set} to set a new
-   * value or calling {@link Store.revalidate|revalidate} to declare that finally the value does not need to be
+   * value or calling {@link Store.resumeSubscribers|resumeSubscribers} to declare that finally the value does not need to be
    * changed.
    *
-   * Note that a store should not stay in the invalidated state for a long time, and most of the time
-   * it is not needed to call invalidate or revalidate manually.
+   * Note that a store should not stay in the paused state for a long time, and most of the time
+   * it is not needed to call pauseSubscribers or resumeSubscribers manually.
    *
    */
-  protected invalidate(): void {
-    if (!this._invalidated) {
-      this._invalidated = true;
+  protected pauseSubscribers(): void {
+    if (!this._subscribersPaused) {
+      this._subscribersPaused = true;
       for (const subscriber of [...this._subscribers]) {
-        subscriber.invalidate();
+        subscriber.pause();
       }
     }
   }
 
   /**
-   * Puts the store back to the normal state without changing its value, if it was in the invalidated state
-   * (cf {@link Store.invalidate|invalidate}). Does nothing if the store was not in the invalidated state.
+   * Puts the store back to the normal state without changing its value, if it was in the paused state
+   * (cf {@link Store.pauseSubscribers|pauseSubscribers}). Does nothing if the store was not in the paused state.
    */
-  protected revalidate(): void {
-    if (this._invalidated) {
+  protected resumeSubscribers(): void {
+    if (this._subscribersPaused) {
       batch(() => {
         queue.add(this as any);
       });
@@ -355,9 +355,9 @@ export abstract class Store<T> implements Readable<T> {
         // subscriber not yet initialized
         return;
       }
-      this.invalidate();
+      this.pauseSubscribers();
     }
-    this.revalidate();
+    this.resumeSubscribers();
   }
 
   /**
@@ -409,15 +409,15 @@ export abstract class Store<T> implements Readable<T> {
     subscriberObject._valueIndex = this._valueIndex;
     subscriberObject._value = this._value;
     subscriberObject.next(this._value);
-    if (this._invalidated) {
-      subscriberObject.invalidate();
+    if (this._subscribersPaused) {
+      subscriberObject.pause();
     }
 
     const unsubscribe = () => {
       const removed = this._subscribers.delete(subscriberObject);
       subscriberObject.next = noop;
-      subscriberObject.invalidate = noop;
-      subscriberObject.revalidate = noop;
+      subscriberObject.pause = noop;
+      subscriberObject.resume = noop;
       subscriberObject._value = undefined;
       if (removed && this._subscribers.size === 0) {
         this._stop();
@@ -607,7 +607,7 @@ export abstract class DerivedStore<
           callCleanup();
           cleanupFn = this.derive(isArray ? dependantValues : dependantValues[0]) || noop;
         }
-        this.revalidate();
+        this.resumeSubscribers();
       }
     };
 
@@ -619,11 +619,11 @@ export abstract class DerivedStore<
           pending &= ~(1 << idx);
           callDerive();
         },
-        invalidate: () => {
+        pause: () => {
           pending |= 1 << idx;
-          this.invalidate();
+          this.pauseSubscribers();
         },
-        revalidate: () => {
+        resume: () => {
           pending &= ~(1 << idx);
           callDerive();
         },
