@@ -3,11 +3,11 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "ngx-tansu": {
+    "tansu": {
       "projectType": "library",
       "root": "",
       "sourceRoot": "src",
-      "prefix": "ngx-tansu",
+      "prefix": "tansu",
       "architect": {
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
@@ -29,7 +29,7 @@
       }
     }
   },
-  "defaultProject": "ngx-tansu",
+  "defaultProject": "tansu",
   "cli": {
     "analytics": false
   }
