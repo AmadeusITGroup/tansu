@@ -19,8 +19,8 @@ jobs:
       - name: yarn version
         working-directory: src
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
           yarn version --new-version ${{ inputs.version }}
       - run: git show HEAD
       - run: yarn build
@@ -36,4 +36,15 @@ jobs:
       - name: npm logout
         run: rm ~/.npmrc
       - run: git push origin master v${{ inputs.version }}
-      - run: yarn docs-publish
+      - uses: actions/checkout@v3
+        with:
+          ref: gh-pages
+          path: gh-pages
+      - name: Publish documentation
+        working-directory: gh-pages
+        run: |
+          rm -rf *
+          cp -a ../dist/docs/* .
+          git add .
+          git commit --allow-empty -a -m "Updating from ${{ github.sha }}"
+          git push origin gh-pages
