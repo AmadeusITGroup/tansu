@@ -16,10 +16,33 @@ export type SubscriberFunction<T> = (value: T) => void;
  * A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the `next` method every time the store's state is changing.
  */
 export interface SubscriberObject<T> {
+  /**
+   * A store will call the `next` method every time the store's state is changing.
+   */
   next: SubscriberFunction<T>;
+  /**
+   * Unused, only declared for compatibility with rxjs.
+   */
   error?: any;
+  /**
+   * Unused, only declared for compatibility with rxjs.
+   */
   complete?: any;
+  /**
+   * A store will call the `invalidate` method when it knows that the value will be changed.
+   * A call to `invalidate` will be followed by a call to {@link SubscriberObject.next|next} or to {@link SubscriberObject.revalidate|revalidate}.
+   */
   invalidate: () => void;
+  /**
+   * A store will call the `revalidate` method if {@link SubscriberObject.invalidate|invalidate} was called previously
+   * and the value finally did not need to change.
+   */
+  revalidate: () => void;
+}
+
+interface PrivateSubscriberObject<T> extends SubscriberObject<T> {
+  _value: T | undefined;
+  _valueIndex: number;
 }
 
 /**
@@ -108,10 +131,22 @@ const bind = <T>(object: T | null | undefined, fnName: keyof T) => {
   return typeof fn === 'function' ? fn.bind(object) : noop;
 };
 
-const toSubscriberObject = <T>(subscriber: Subscriber<T>): SubscriberObject<T> =>
+const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObject<T> =>
   typeof subscriber === 'function'
-    ? { next: subscriber.bind(null), invalidate: noop }
-    : { next: bind(subscriber, 'next'), invalidate: bind(subscriber, 'invalidate') };
+    ? {
+        next: subscriber.bind(null),
+        invalidate: noop,
+        revalidate: noop,
+        _value: undefined,
+        _valueIndex: 0,
+      }
+    : {
+        next: bind(subscriber, 'next'),
+        invalidate: bind(subscriber, 'invalidate'),
+        revalidate: bind(subscriber, 'revalidate'),
+        _value: undefined,
+        _valueIndex: 0,
+      };
 
 const returnThis = function <T>(this: T): T {
   return this;
@@ -123,8 +158,9 @@ const asReadable = <T>(store: Store<T>): Readable<T> => ({
   [symbolObservable]: returnThis,
 });
 
+const queueProcess = Symbol();
 let willProcessQueue = false;
-const queue = new Map<SubscriberObject<any>, any>();
+const queue = new Set<{ [queueProcess](): void }>();
 
 const callUnsubscribe = (unsubscribe: Unsubscriber) =>
   typeof unsubscribe === 'function' ? unsubscribe() : unsubscribe.unsubscribe();
@@ -172,9 +208,9 @@ export const batch = <T>(fn: () => T): T => {
     return fn();
   } finally {
     if (needsProcessQueue) {
-      for (const [subscriberObject, value] of queue) {
-        queue.delete(subscriberObject);
-        subscriberObject.next(value);
+      for (const store of queue) {
+        queue.delete(store);
+        store[queueProcess]();
       }
       willProcessQueue = false;
     }
@@ -231,8 +267,10 @@ export function get<T>(store: SubscribableStore<T>): T {
  * ```
  */
 export abstract class Store<T> implements Readable<T> {
-  private _subscribers = new Set<SubscriberObject<T>>();
+  private _subscribers = new Set<PrivateSubscriberObject<T>>();
   private _cleanupFn: null | Unsubscriber = null;
+  private _invalidated = false;
+  private _valueIndex = 1;
 
   /**
    *
@@ -252,6 +290,57 @@ export abstract class Store<T> implements Readable<T> {
     }
   }
 
+  private [queueProcess](): void {
+    this._invalidated = false;
+    const valueIndex = this._valueIndex;
+    const value = this._value;
+    for (const subscriber of [...this._subscribers]) {
+      if (subscriber._valueIndex !== valueIndex && notEqual(subscriber._value, value)) {
+        subscriber._valueIndex = valueIndex;
+        subscriber._value = value;
+        subscriber.next(value);
+      } else {
+        subscriber._valueIndex = valueIndex;
+        subscriber.revalidate();
+      }
+    }
+  }
+
+  /**
+   * Puts the store in the invalidated state, which means it will soon update its value.
+   *
+   * The invalidated state prevents derived stores (both direct and transitive) from recomputing their value
+   * using the current value of this store.
+   *
+   * There are two ways to put a store back into its normal state: calling {@link Store.set|set} to set a new
+   * value or calling {@link Store.revalidate|revalidate} to declare that finally the value does not need to be
+   * changed.
+   *
+   * Note that a store should not stay in the invalidated state for a long time, and most of the time
+   * it is not needed to call invalidate or revalidate manually.
+   *
+   */
+  protected invalidate(): void {
+    if (!this._invalidated) {
+      this._invalidated = true;
+      for (const subscriber of [...this._subscribers]) {
+        subscriber.invalidate();
+      }
+    }
+  }
+
+  /**
+   * Puts the store back to the normal state without changing its value, if it was in the invalidated state
+   * (cf {@link Store.invalidate|invalidate}). Does nothing if the store was not in the invalidated state.
+   */
+  protected revalidate(): void {
+    if (this._invalidated) {
+      batch(() => {
+        queue.add(this as any);
+      });
+    }
+  }
+
   /**
    * Replaces store's state with the provided value.
    * Equivalent of {@link Writable.set}, but internal to the store.
@@ -260,21 +349,15 @@ export abstract class Store<T> implements Readable<T> {
    */
   protected set(value: T): void {
     if (notEqual(this._value, value)) {
+      this._valueIndex++;
       this._value = value;
       if (!this._cleanupFn) {
         // subscriber not yet initialized
         return;
       }
-      batch(() => {
-        for (const subscriber of this._subscribers) {
-          const needInvalidate = !queue.has(subscriber);
-          queue.set(subscriber, value);
-          if (needInvalidate) {
-            subscriber.invalidate();
-          }
-        }
-      });
+      this.invalidate();
     }
+    this.revalidate();
   }
 
   /**
@@ -323,12 +406,19 @@ export abstract class Store<T> implements Readable<T> {
     if (this._subscribers.size == 1) {
       this._start();
     }
+    subscriberObject._valueIndex = this._valueIndex;
+    subscriberObject._value = this._value;
     subscriberObject.next(this._value);
+    if (this._invalidated) {
+      subscriberObject.invalidate();
+    }
 
     const unsubscribe = () => {
       const removed = this._subscribers.delete(subscriberObject);
       subscriberObject.next = noop;
       subscriberObject.invalidate = noop;
+      subscriberObject.revalidate = noop;
+      subscriberObject._value = undefined;
       if (removed && this._subscribers.size === 0) {
         this._stop();
       }
@@ -491,6 +581,7 @@ export abstract class DerivedStore<
   protected onUse(): Unsubscriber | void {
     let initDone = false;
     let pending = 0;
+    let changed = 0;
 
     const stores = this._stores;
     const isArray = Array.isArray(stores);
@@ -511,8 +602,12 @@ export abstract class DerivedStore<
 
     const callDerive = () => {
       if (initDone && !pending) {
-        callCleanup();
-        cleanupFn = this.derive(isArray ? dependantValues : dependantValues[0]) || noop;
+        if (changed) {
+          changed = 0;
+          callCleanup();
+          cleanupFn = this.derive(isArray ? dependantValues : dependantValues[0]) || noop;
+        }
+        this.revalidate();
       }
     };
 
@@ -520,11 +615,17 @@ export abstract class DerivedStore<
       store.subscribe({
         next: (v) => {
           dependantValues[idx] = v;
+          changed |= 1 << idx;
           pending &= ~(1 << idx);
           callDerive();
         },
         invalidate: () => {
           pending |= 1 << idx;
+          this.invalidate();
+        },
+        revalidate: () => {
+          pending &= ~(1 << idx);
+          callDerive();
         },
       })
     );
@@ -563,7 +664,8 @@ export abstract class DerivedStore<
  */
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  deriveFn: SyncDeriveFn<T, S>
+  deriveFn: SyncDeriveFn<T, S>,
+  initialValue?: T
 ): Readable<T>;
 export function derived<T, S extends SubscribableStores>(
   stores: S,
