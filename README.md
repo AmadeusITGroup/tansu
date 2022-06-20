@@ -1,8 +1,8 @@
-![build](https://github.com/AmadeusITGroup/ngx-tansu/workflows/ci/badge.svg) [![codecov](https://codecov.io/gh/AmadeusITGroup/ngx-tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/ngx-tansu)
+![build](https://github.com/AmadeusITGroup/tansu/workflows/ci/badge.svg) [![codecov](https://codecov.io/gh/AmadeusITGroup/tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/tansu)
 
-# ngx-tansu
+# tansu
 
-ngx-tansu is a lightweight, push-based state management library for Angular. 
+tansu is a lightweight, push-based state management library.
 It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md).
 
 Main characteristics:
@@ -11,7 +11,7 @@ Main characteristics:
 * can handle both immutable and mutable data;
 * results in compact code with the absolute minimum of boilerplate.
 
-ngx-tansu is tightly integrated with the Angular ecosystem:
+tansu works well with the Angular ecosystem:
 * works with the standard `async` pipe out of the box;
 * stores can be registered in the DI container at any level (module or component injector).
 
@@ -19,19 +19,19 @@ Implementation wise, it is a tiny (500 LOC) library without any external depende
 
 ## Installation
 
-You can add ngx-tansu to your project by installing the `ngx-tansu` package using your favorite package manager, ex.:
-* `yarn add ngx-tansu`
-* `npm install ngx-tansu`
+You can add tansu to your project by installing the `@amadeus-it-group/tansu` package using your favorite package manager, ex.:
+* `yarn add @amadeus-it-group/tansu`
+* `npm install @amadeus-it-group/tansu`
 
 ## Usage
 
-Here is an example of a component using a ngx-tansu store:
+Here is an example of an Angular component using a tansu store:
 
 ```typescript
 import { Component } from "@angular/core";
-import { Store, derived } from "ngx-tansu";
+import { Store, derived } from "@amadeus-it-group/tansu";
 
-// A store is a class extending Store from ngx-tansu
+// A store is a class extending Store from tansu
 class CounterStore extends Store<number> {
   constructor() {
     super(0); // initialize store's value (state)
@@ -68,9 +68,9 @@ export class AppComponent {
 }
 ```
 
-While being fairly minimal, this example demonstrates most of the ngx-tansu APIs. 
+While being fairly minimal, this example demonstrates most of the tansu APIs.
 
-Check the [documentation](http://amadeusitgroup.github.io/ngx-tansu/) for the complete API and more usage examples.
+Check the [documentation](http://amadeusitgroup.github.io/tansu/) for the complete API and more usage examples.
 
 ## Contributing to the project
 

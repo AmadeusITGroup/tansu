@@ -1,7 +1,7 @@
 {
-  "name": "ngx-tansu",
+  "name": "@amadeus-it-group/tansu",
   "version": "0.0.2-alpha",
-  "description": "ngx-tansu is a lightweight, push-based state management library for Angular. It borrows the ideas and APIs originally designed and implemented by Svelte stores",
+  "description": "tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by Svelte stores",
   "keywords": [
     "state management",
     "Angular"
@@ -9,10 +9,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AmadeusITGroup/ngx-tansu.git"
+    "url": "git+https://github.com/AmadeusITGroup/tansu.git"
   },
   "bugs": {
-    "url": "https://github.com/AmadeusITGroup/ngx-tansu/issues"
+    "url": "https://github.com/AmadeusITGroup/tansu/issues"
   },
-  "homepage": "https://github.com/AmadeusITGroup/ngx-tansu#readme"
+  "homepage": "https://github.com/AmadeusITGroup/tansu#readme"
 }
