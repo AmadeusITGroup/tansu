@@ -8,5 +8,5 @@
 
 |  Package | Description |
 |  --- | --- |
-|  [ngx-tansu](./ngx-tansu.md) |  |
+|  [@amadeus-it-group/tansu](./tansu.md) |  |
 
