@@ -244,13 +244,13 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should not call again listeners when only revalidating', () => {
+    it('should not call again listeners when only resuming subscribers', () => {
       class BasicStore extends Store<object> {
-        public invalidate(): void {
-          super.invalidate();
+        public pauseSubscribers(): void {
+          super.pauseSubscribers();
         }
-        public revalidate(): void {
-          super.revalidate();
+        public resumeSubscribers(): void {
+          super.resumeSubscribers();
         }
         public set(value: object): void {
           super.set(value);
@@ -263,8 +263,8 @@ describe('stores', () => {
       const unsubscribe = store.subscribe((v) => calls.push(v));
       expect(calls.length).toBe(1);
       expect(calls[0]).toBe(initialValue);
-      store.invalidate();
-      store.revalidate();
+      store.pauseSubscribers();
+      store.resumeSubscribers();
       expect(calls.length).toBe(1);
       store.set(newValue);
       expect(calls.length).toBe(2);
@@ -864,24 +864,24 @@ describe('stores', () => {
       unsubscribe2();
     });
 
-    it('should not call invalidate multiple times', () => {
+    it('should not call pause multiple times', () => {
       const store = writable(0);
-      let invalidateCalls = 0;
+      let pauseCalls = 0;
       const unsubscribe = store.subscribe({
         next: () => {},
-        invalidate: () => {
-          invalidateCalls++;
+        pause: () => {
+          pauseCalls++;
         },
       });
-      expect(invalidateCalls).toEqual(0);
+      expect(pauseCalls).toEqual(0);
       batch(() => {
-        expect(invalidateCalls).toEqual(0);
+        expect(pauseCalls).toEqual(0);
         store.set(1);
-        expect(invalidateCalls).toEqual(1);
+        expect(pauseCalls).toEqual(1);
         store.set(2);
-        expect(invalidateCalls).toEqual(1);
+        expect(pauseCalls).toEqual(1);
       });
-      expect(invalidateCalls).toEqual(1);
+      expect(pauseCalls).toEqual(1);
       unsubscribe();
     });
 
@@ -1108,7 +1108,7 @@ describe('stores', () => {
       unsubscribe2();
     });
 
-    it('should work with a derived store of a derived store that is invalidated but finally does not change', () => {
+    it('should work with a derived store of a derived store that is paused but finally does not change', () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
@@ -1138,7 +1138,7 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with a derived store of a derived store that is invalidated and finally changes', () => {
+    it('should work with a derived store of a derived store that is paused and finally changes', () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
@@ -1169,7 +1169,7 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with a derived store of an async derived store that is invalidated but does not set any new value', () => {
+    it('should work with a derived store of an async derived store that is paused but does not set any new value', () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine
