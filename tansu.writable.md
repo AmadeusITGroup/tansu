@@ -6,6 +6,16 @@
 
 Builds on top of [Readable](./tansu.readable.md) and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
 
+<b>Signature:</b>
+
+```typescript
+export interface Writable<T> extends Readable<T> 
+```
+<b>Extends:</b> [Readable](./tansu.readable.md)
+
+## Example
+
+
 ```typescript
 // reset counter's store value to 0 by using the {@link Writable.set} method
 counterStore.set(0);
@@ -13,13 +23,6 @@ counterStore.set(0);
 // increment counter's store value by using the {@link Writable.update} method
 counterStore.update(currentValue => currentValue + 1);
 ```
-
-<b>Signature:</b>
-
-```typescript
-export interface Writable<T> extends Readable<T> 
-```
-<b>Extends:</b> [Readable](./tansu.readable.md)
 
 ## Methods
 

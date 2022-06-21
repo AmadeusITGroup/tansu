@@ -4,7 +4,7 @@
 
 ## SubscriberObject.next property
 
-A store will call the `next` method every time the store's state is changing.
+A store will call this method every time the store's state is changing.
 
 <b>Signature:</b>
 

@@ -6,12 +6,6 @@
 
 Puts the store in the paused state, which means it will soon update its value.
 
-The paused state prevents derived stores (both direct and transitive) from recomputing their value using the current value of this store.
-
-There are two ways to put a store back into its normal state: calling [set](./tansu.store.set.md) to set a new value or calling [resumeSubscribers](./tansu.store.resumesubscribers.md) to declare that finally the value does not need to be changed.
-
-Note that a store should not stay in the paused state for a long time, and most of the time it is not needed to call pauseSubscribers or resumeSubscribers manually.
-
 <b>Signature:</b>
 
 ```typescript
@@ -20,4 +14,12 @@ protected pauseSubscribers(): void;
 <b>Returns:</b>
 
 void
+
+## Remarks
+
+The paused state prevents derived stores (both direct and transitive) from recomputing their value using the current value of this store.
+
+There are two ways to put a store back into its normal state: calling [set](./tansu.store.set.md) to set a new value or calling [resumeSubscribers](./tansu.store.resumesubscribers.md) to declare that finally the value does not need to be changed.
+
+Note that a store should not stay in the paused state for a long time, and most of the time it is not needed to call pauseSubscribers or resumeSubscribers manually.
 

@@ -8,5 +8,5 @@
 
 |  Package | Description |
 |  --- | --- |
-|  [@amadeus-it-group/tansu](./tansu.md) |  |
+|  [@amadeus-it-group/tansu](./tansu.md) | tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md)<!-- -->. |
 

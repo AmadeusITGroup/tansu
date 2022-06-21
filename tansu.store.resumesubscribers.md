@@ -4,7 +4,7 @@
 
 ## Store.resumeSubscribers() method
 
-Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->). Does nothing if the store was not in the paused state.
+Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->).
 
 <b>Signature:</b>
 
@@ -14,4 +14,8 @@ protected resumeSubscribers(): void;
 <b>Returns:</b>
 
 void
+
+## Remarks
+
+Does nothing if the store was not in the paused state.
 

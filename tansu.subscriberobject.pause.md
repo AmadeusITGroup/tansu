@@ -4,7 +4,7 @@
 
 ## SubscriberObject.pause property
 
-A store will call the `pause` method when it knows that the value will be changed. A call to `pause` will be followed by a call to [next](./tansu.subscriberobject.next.md) or to [resume](./tansu.subscriberobject.resume.md)<!-- -->.
+A store will call this method when it knows that the value will be changed. A call to this method will be followed by a call to [next](./tansu.subscriberobject.next.md) or to [resume](./tansu.subscriberobject.resume.md)<!-- -->.
 
 <b>Signature:</b>
 

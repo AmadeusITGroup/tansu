@@ -4,6 +4,8 @@
 
 ## tansu package
 
+tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md)<!-- -->.
+
 ## Classes
 
 |  Class | Description |
@@ -28,23 +30,15 @@
 |  [OnUseArgument](./tansu.onuseargument.md) |  |
 |  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface with the Angular-specific <code>OnDestroy</code> callback. The [Readable](./tansu.readable.md) stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed. |
 |  [SubscribableStore](./tansu.subscribablestore.md) | Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change. |
-|  [SubscriberObject](./tansu.subscriberobject.md) | A partial \[observer\](https://github.com/tc39/proposal-observable\#api) notified when a store value changes. A store will call the <code>next</code> method every time the store's state is changing. |
+|  [SubscriberObject](./tansu.subscriberobject.md) | A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the [next](./tansu.subscriberobject.next.md) method every time the store's state is changing. |
 |  [UnsubscribeObject](./tansu.unsubscribeobject.md) | An object with the <code>unsubscribe</code> method. Subscribable stores might choose to return such object instead of directly returning [UnsubscribeFunction](./tansu.unsubscribefunction.md) from a subscription call. |
-|  [Writable](./tansu.writable.md) | Builds on top of [Readable](./tansu.readable.md) and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
-```typescript
-// reset counter's store value to 0 by using the {@link Writable.set} method
-counterStore.set(0);
-
-// increment counter's store value by using the {@link Writable.update} method
-counterStore.update(currentValue => currentValue + 1);
-```
- |
+|  [Writable](./tansu.writable.md) | Builds on top of [Readable](./tansu.readable.md) and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store. |
 
 ## Variables
 
 |  Variable | Description |
 |  --- | --- |
-|  [batch](./tansu.batch.md) | Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. If a store is updated multiple times in the provided function, listeners of that store will only be called once when the provided function returns. It is possible to have nested calls of batch, in which case only the first (outer) call has an effect, inner calls only call the provided function. |
+|  [batch](./tansu.batch.md) | Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. |
 
 ## Type Aliases
 

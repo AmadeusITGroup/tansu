@@ -4,7 +4,7 @@
 
 ## SubscriberObject.resume property
 
-A store will call the `resume` method if [pause](./tansu.subscriberobject.pause.md) was called previously and the value finally did not need to change.
+A store will call this method if [pause](./tansu.subscriberobject.pause.md) was called previously and the value finally did not need to change.
 
 <b>Signature:</b>
 

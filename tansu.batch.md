@@ -4,13 +4,19 @@
 
 ## batch variable
 
-Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. If a store is updated multiple times in the provided function, listeners of that store will only be called once when the provided function returns. It is possible to have nested calls of batch, in which case only the first (outer) call has an effect, inner calls only call the provided function.
+Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations.
 
 <b>Signature:</b>
 
 ```typescript
 batch: <T>(fn: () => T) => T
 ```
+
+## Remarks
+
+If a store is updated multiple times in the provided function, listeners of that store will only be called once when the provided function returns.
+
+It is possible to have nested calls of batch, in which case only the first (outer) call has an effect, inner calls only call the provided function.
 
 ## Example
 
