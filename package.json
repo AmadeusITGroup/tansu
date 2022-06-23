@@ -19,7 +19,6 @@
     "@typescript-eslint/parser": "^5.28.0",
     "eslint": "^8.17.0",
     "eslint-config-prettier": "^8.5.0",
-    "gh-pages": "^4.0.0",
     "husky": "^8.0.1",
     "jasmine-core": "^4.2.0",
     "jasmine-spec-reporter": "^7.0.0",
@@ -44,7 +43,6 @@
     "check-format": "prettier --check .",
     "api": "api-extractor run",
     "docs": "api-documenter markdown -i temp -o dist/docs",
-    "docs-publish": "gh-pages -d dist/docs",
     "package": "cp README.md src/package.json src/.npmignore dist/tsdoc-metadata.json dist/src"
   },
   "husky": {
