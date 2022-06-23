@@ -14,6 +14,7 @@
     "@commitlint/config-conventional": "^17.0.2",
     "@microsoft/api-documenter": "^7.17.17",
     "@microsoft/api-extractor": "^7.25.0",
+    "@rollup/plugin-typescript": "^8.3.3",
     "@types/jasmine": "^4.0.3",
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "@typescript-eslint/parser": "^5.28.0",
@@ -29,6 +30,7 @@
     "karma-jasmine-html-reporter": "^2.0.0",
     "prettier": "^2.7.0",
     "pretty-quick": "^3.1.3",
+    "rollup": "^2.75.7",
     "rxjs": "^7.5.5",
     "typescript": "^4.7.3",
     "zone.js": "^0.11.5"
@@ -39,11 +41,13 @@
     "clean": "rm -rf dist temp",
     "lint": "eslint src/{,**/}*.ts",
     "prebuild": "yarn clean",
-    "build": "tsc",
+    "build:rollup": "rollup --failAfterWarnings -c",
+    "build:dts": "tsc -p tsconfig.d.json",
+    "build:api": "api-extractor run",
+    "build:package": "cp README.md src/package.json dist/package",
+    "build": "yarn build:rollup && yarn build:dts && yarn build:api && yarn build:package",
     "check-format": "prettier --check .",
-    "api": "api-extractor run",
-    "docs": "api-documenter markdown -i temp -o dist/docs",
-    "package": "cp README.md src/package.json src/.npmignore dist/tsdoc-metadata.json dist/src"
+    "docs": "api-documenter markdown -i temp -o dist/docs"
   },
   "husky": {
     "hooks": {

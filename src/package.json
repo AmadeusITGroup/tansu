@@ -6,6 +6,9 @@
     "state management",
     "Angular"
   ],
+  "index": "index.cjs.js",
+  "module": "index.es.js",
+  "typings": "index.d.ts",
   "license": "MIT",
   "repository": {
     "type": "git",

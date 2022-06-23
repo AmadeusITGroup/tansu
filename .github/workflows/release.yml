@@ -24,15 +24,13 @@ jobs:
           yarn version --new-version ${{ inputs.version }}
       - run: git show HEAD
       - run: yarn build
-      - run: yarn api
       - run: yarn docs
-      - run: yarn package
       - name: npm login
         run: |
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
           npm whoami
       - run: npm publish --access=public
-        working-directory: dist/src
+        working-directory: dist/package
       - name: npm logout
         run: rm ~/.npmrc
       - run: git push origin master v${{ inputs.version }}
