@@ -28,5 +28,4 @@ jobs:
         with:
           file: coverage/lcov.info
       - run: yarn build
-      - run: yarn api
       - run: yarn docs
