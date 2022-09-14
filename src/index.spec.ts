@@ -24,6 +24,66 @@ describe('stores', () => {
       expect(defValue).toBe('Hello, World');
     });
 
+    it('should allow overriding notEqual', () => {
+      const notEqualCalls: [number, number][] = [];
+      class ModuloStore extends Store<number> {
+        constructor(public readonly modulo: number, initialValue: number) {
+          super(initialValue);
+        }
+        protected notEqual(a: number, b: number): boolean {
+          notEqualCalls.push([a, b]);
+          return a % this.modulo !== b % this.modulo;
+        }
+        set(value: number) {
+          super.set(value);
+        }
+      }
+      const modulo10 = new ModuloStore(10, 1); // two numbers are considered equal if the last digit is the same
+      const changes: number[] = [];
+      modulo10.subscribe((value) => changes.push(value));
+      modulo10.set(11); // no change
+      expect(get(modulo10)).toEqual(1);
+      modulo10.set(14);
+      expect(get(modulo10)).toEqual(14);
+      modulo10.set(4); // no change
+      expect(get(modulo10)).toEqual(14);
+      modulo10.set(11);
+      expect(get(modulo10)).toEqual(11);
+      modulo10.set(2);
+      expect(get(modulo10)).toEqual(2);
+      const changes2: number[] = [];
+      const changes3: number[] = [];
+      batch(() => {
+        modulo10.set(3);
+        expect(get(modulo10)).toEqual(3);
+        modulo10.set(4);
+        expect(get(modulo10)).toEqual(4);
+        modulo10.subscribe((value) => changes2.push(value));
+        modulo10.subscribe((value) => changes3.push(value));
+        modulo10.set(5);
+        expect(get(modulo10)).toEqual(5);
+        modulo10.set(2);
+      });
+      expect(changes2).toEqual([4, 2]);
+      expect(changes3).toEqual([4, 2]);
+      expect(changes).toEqual([1, 14, 11, 2]);
+      expect(notEqualCalls).toEqual([
+        [1, 11],
+        [1, 14],
+        [14, 4],
+        [14, 11],
+        [11, 2],
+        // inside batch:
+        [2, 3],
+        [3, 4],
+        [4, 5],
+        [5, 2],
+        // leaving batch:
+        [2, 2],
+        [4, 2], // this is done once, even though 2 subscribers need it
+      ]);
+    });
+
     it('should expose protected methods of setting and updating state', () => {
       class CounterStore extends Store<number> {
         constructor() {

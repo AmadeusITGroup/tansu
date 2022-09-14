@@ -48,7 +48,7 @@ export interface SubscriberObject<T> {
 }
 
 interface PrivateSubscriberObject<T> extends SubscriberObject<T> {
-  _value: T | undefined;
+  _value: T;
   _valueIndex: number;
 }
 
@@ -146,14 +146,14 @@ const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObje
         next: subscriber.bind(null),
         pause: noop,
         resume: noop,
-        _value: undefined,
+        _value: undefined as any,
         _valueIndex: 0,
       }
     : {
         next: bind(subscriber, 'next'),
         pause: bind(subscriber, 'pause'),
         resume: bind(subscriber, 'resume'),
-        _value: undefined,
+        _value: undefined as any,
         _valueIndex: 0,
       };
 
@@ -173,14 +173,6 @@ const queue = new Set<{ [queueProcess](): void }>();
 
 const callUnsubscribe = (unsubscribe: Unsubscriber) =>
   typeof unsubscribe === 'function' ? unsubscribe() : unsubscribe.unsubscribe();
-
-function notEqual(a: any, b: any): boolean {
-  const tOfA = typeof a;
-  if (tOfA !== 'function' && tOfA !== 'object') {
-    return !Object.is(a, b);
-  }
-  return true;
-}
 
 /**
  * Batches multiple changes to stores while calling the provided function,
@@ -307,8 +299,18 @@ export abstract class Store<T> implements Readable<T> {
     this._subscribersPaused = false;
     const valueIndex = this._valueIndex;
     const value = this._value;
+    const notEqualCache = {
+      [valueIndex]: false, // the subscriber already has the last value
+      [valueIndex - 1]: true, // the subscriber had the previous value,
+      // which is known to be different because notEqual is called in the set method
+    };
     for (const subscriber of [...this._subscribers]) {
-      if (subscriber._valueIndex !== valueIndex && notEqual(subscriber._value, value)) {
+      let different = notEqualCache[subscriber._valueIndex];
+      if (different == null) {
+        different = this.notEqual(subscriber._value, value);
+        notEqualCache[subscriber._valueIndex] = different;
+      }
+      if (different) {
         subscriber._valueIndex = valueIndex;
         subscriber._value = value;
         subscriber.next(value);
@@ -317,6 +319,26 @@ export abstract class Store<T> implements Readable<T> {
         subscriber.resume();
       }
     }
+  }
+
+  /**
+   * Compares two values and returns true if they are different.
+   * It is called when setting a new value to avoid doing anything
+   * (such as notifying listeners) if the value did not change.
+   * The default logic is to return true if `a` is a function or an object,
+   * or if `a` and `b` are different according to `Object.is`.
+   * This method can be overridden by subclasses to change the logic.
+   *
+   * @param a - First value to compare.
+   * @param b - Second value to compare.
+   * @returns true if a and b are considered different.
+   */
+  protected notEqual(a: T, b: T): boolean {
+    const tOfA = typeof a;
+    if (tOfA !== 'function' && tOfA !== 'object') {
+      return !Object.is(a, b);
+    }
+    return true;
   }
 
   /**
@@ -367,7 +389,7 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    if (notEqual(this._value, value)) {
+    if (this.notEqual(this._value, value)) {
       this._valueIndex++;
       this._value = value;
       if (!this._cleanupFn) {
@@ -437,7 +459,6 @@ export abstract class Store<T> implements Readable<T> {
       subscriberObject.next = noop;
       subscriberObject.pause = noop;
       subscriberObject.resume = noop;
-      subscriberObject._value = undefined;
       if (removed && this._subscribers.size === 0) {
         this._stop();
       }
