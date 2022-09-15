@@ -510,6 +510,39 @@ describe('stores', () => {
       expect(get(store)).toBe(1);
     });
 
+    it('should accept an options object with onUse property', () => {
+      const store = readable(-1, {
+        onUse({ set, update }) {
+          set(0);
+          update((v) => v + 1);
+        },
+      });
+
+      expect(get(store)).toBe(1);
+    });
+
+    it('should accept an options object with onUse and notEqual properties', () => {
+      const notEqualCalls: [number, number][] = [];
+      const store = readable(-1, {
+        onUse({ set, update }) {
+          expect(this).toBeFalsy();
+          set(0);
+          update((v) => v + 1);
+        },
+        notEqual(a, b) {
+          expect(this).toBeFalsy();
+          notEqualCalls.push([a, b]);
+          return false;
+        },
+      });
+
+      expect(get(store)).toBe(-1);
+      expect(notEqualCalls).toEqual([
+        [-1, 0],
+        [-1, 0],
+      ]);
+    });
+
     it('should be able to use destructuring', () => {
       const store = readable(0);
       const { subscribe } = store;
@@ -543,6 +576,39 @@ describe('stores', () => {
       expect(get(store)).toBe(1);
     });
 
+    it('should accept an options object with onUse hook function', () => {
+      const store = writable(-1, {
+        onUse({ set, update }) {
+          set(0);
+          update((v) => v + 1);
+        },
+      });
+
+      expect(get(store)).toBe(1);
+    });
+
+    it('should accept an options object with onUse and notEqual properties', () => {
+      const notEqualCalls: [number, number][] = [];
+      const store = writable(-1, {
+        onUse({ set, update }) {
+          expect(this).toBeFalsy();
+          set(0);
+          update((v) => v + 1);
+        },
+        notEqual(a, b) {
+          expect(this).toBeFalsy();
+          notEqualCalls.push([a, b]);
+          return false;
+        },
+      });
+
+      expect(get(store)).toBe(-1);
+      expect(notEqualCalls).toEqual([
+        [-1, 0],
+        [-1, 0],
+      ]);
+    });
+
     // https://github.com/sveltejs/svelte/blob/84ac3a53d53a84194cd9f121a27809a60764d6fc/test/store/index.js
     it('should not assume immutable data', () => {
       const obj = {};
@@ -554,10 +620,37 @@ describe('stores', () => {
         called += 1;
       });
 
+      expect(called).toBe(1);
+
       store.set(obj);
       expect(called).toBe(2);
 
       store.update((obj) => obj);
+      expect(called).toBe(3);
+    });
+
+    it('should allow overriding notEqual for immutable data', () => {
+      const obj = {};
+      let called = 0;
+
+      const store = writable(obj, { notEqual: (a, b) => !Object.is(a, b) });
+
+      store.subscribe(() => {
+        called += 1;
+      });
+
+      expect(called).toBe(1);
+
+      store.set(obj);
+      expect(called).toBe(1);
+
+      store.update((obj) => obj);
+      expect(called).toBe(1);
+
+      store.set({ ...obj });
+      expect(called).toBe(2);
+
+      store.update((obj) => ({ ...obj }));
       expect(called).toBe(3);
     });
 
@@ -648,6 +741,63 @@ describe('stores', () => {
 
       numbersStore.set(7);
       expect(get(multiplyStore)).toBe(14);
+    });
+
+    it('should support an option object from derived shorthand', () => {
+      const numbersStore = writable(0);
+      const multiplyStore = derived([numbersStore], { derive: (values) => values[0] * 2 });
+      const values: number[] = [];
+      multiplyStore.subscribe((value) => values.push(value));
+
+      expect(get(multiplyStore)).toBe(0);
+
+      numbersStore.set(5);
+      expect(get(multiplyStore)).toBe(10);
+
+      numbersStore.set(7);
+      expect(get(multiplyStore)).toBe(14);
+
+      expect(values).toEqual([0, 10, 14]);
+    });
+
+    it('should support an option object with notEqual from derived shorthand', () => {
+      const numbersStore = writable(0);
+      const multiplyStore = derived([numbersStore], {
+        derive: (values) => values[0] * 2,
+        notEqual: (a, b) => a % 10 !== b % 10,
+      });
+      const values: number[] = [];
+      multiplyStore.subscribe((value) => values.push(value));
+
+      expect(get(multiplyStore)).toBe(0);
+
+      numbersStore.set(5);
+      expect(get(multiplyStore)).toBe(0);
+
+      numbersStore.set(7);
+      expect(get(multiplyStore)).toBe(14);
+
+      expect(values).toEqual([0, 14]);
+    });
+
+    it('should not allow setting the onUse option from derived shorthand', () => {
+      let onUseCalls = 0;
+      const numbersStore = writable(0);
+      const multiplyStore = derived([numbersStore], {
+        derive: (values: number[]) => values[0] * 2,
+        ...{
+          onUse: () => {
+            onUseCalls++;
+          },
+        },
+        notEqual: (a: number, b: number) => a % 10 !== b % 10,
+      });
+      const values: number[] = [];
+      multiplyStore.subscribe((value) => values.push(value));
+
+      expect(get(multiplyStore)).toBe(0);
+      expect(values).toEqual([0]);
+      expect(onUseCalls).toEqual(0);
     });
 
     it('should properly support unsubscribing', () => {
