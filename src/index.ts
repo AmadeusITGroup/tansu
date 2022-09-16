@@ -486,6 +486,40 @@ export interface OnUseArgument<T> {
   update: (updater: Updater<T>) => void;
 }
 
+/**
+ * Type of a function that is called when the number of subscribers changes from 0 to 1
+ * (but not called when the number of subscribers changes from 1 to 2, ...).
+ * If it returns a function, that function will be called when the number of subscribers changes from 1 to 0.
+ */
+export type OnUseFn<T> = (arg: OnUseArgument<T>) => void | Unsubscriber;
+
+/**
+ * Store options that can be passed to {@link readable} or {@link writable}.
+ */
+export interface StoreOptions<T> {
+  /**
+   * A function that is called when the number of subscribers changes from 0 to 1
+   * (but not called when the number of subscribers changes from 1 to 2, ...).
+   * If it returns a function, that function will be called when the number of subscribers changes from 1 to 0.
+   */
+  onUse?: OnUseFn<T>;
+
+  /**
+   * Custom function to compare two values, that should return true if they
+   * are different.
+   * It is called when setting a new value to avoid doing anything
+   * (such as notifying listeners) if the value did not change.
+   * The default logic (when this option is not present) is to return true
+   * if `a` is a function or an object, or if `a` and `b` are different
+   * according to `Object.is`.
+   *
+   * @param a - First value to compare.
+   * @param b - Second value to compare.
+   * @returns true if a and b are considered different.
+   */
+  notEqual?: (a: T, b: T) => boolean;
+}
+
 const noopUnsubscribe = () => {};
 noopUnsubscribe.unsubscribe = noopUnsubscribe;
 
@@ -505,44 +539,6 @@ function constStore<T>(value: T): Readable<T> {
   };
 }
 
-/**
- * A convenience function to create {@link Readable} store instances.
- * @param value - Initial value of a readable store.
- * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
- * (but not called when the number of subscribers changes from 1 to 2, ...).
- * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
- *
- * @example
- * ```typescript
- * const clock = readable("00:00", setState => {
- *   const intervalID = setInterval(() => {
- *     const date = new Date();
- *     setState(`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`);
- *   }, 1000);
- *
- *   return () => clearInterval(intervalID);
- * });
- * ```
- */
-export function readable<T>(
-  value: T,
-  onUseFn: (arg: OnUseArgument<T>) => void | Unsubscriber = noop
-): Readable<T> {
-  if (onUseFn === noop) {
-    // special optimized case
-    return constStore(value);
-  }
-  const ReadableStoreWithOnUse = class extends Store<T> {
-    protected onUse() {
-      const setFn = (v: T) => this.set(v);
-      setFn.set = setFn;
-      setFn.update = (updater: Updater<T>) => this.update(updater);
-      return onUseFn(setFn);
-    }
-  };
-  return asReadable(new ReadableStoreWithOnUse(value));
-}
-
 class WritableStore<T> extends Store<T> implements Writable<T> {
   constructor(value: T) {
     super(value);
@@ -557,10 +553,60 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
   }
 }
 
+const applyStoreOptions = <T, S extends Store<T>>(store: S, options: StoreOptions<T>): S => {
+  const { onUse, notEqual } = options;
+  if (onUse) {
+    (store as any).onUse = function (this: Store<T>) {
+      const setFn = (v: T) => this.set(v);
+      setFn.set = setFn;
+      setFn.update = (updater: Updater<T>) => this.update(updater);
+      return onUse(setFn);
+    };
+  }
+  if (notEqual) {
+    (store as any).notEqual = function (this: Store<T>, a: T, b: T) {
+      return notEqual(a, b);
+    };
+  }
+  return store;
+};
+
+/**
+ * A convenience function to create {@link Readable} store instances.
+ * @param value - Initial value of a readable store.
+ * @param options - Either an object with {@link StoreOptions | store options}, or directly the onUse function.
+ * The onUse function is a function called when the number of subscribers changes from 0 to 1
+ * (but not called when the number of subscribers changes from 1 to 2, ...).
+ * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
+ *
+ * @example Sample with an onUse function
+ * ```typescript
+ * const clock = readable("00:00", setState => {
+ *   const intervalID = setInterval(() => {
+ *     const date = new Date();
+ *     setState(`${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`);
+ *   }, 1000);
+ *
+ *   return () => clearInterval(intervalID);
+ * });
+ * ```
+ */
+export function readable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}): Readable<T> {
+  if (typeof options === 'function') {
+    options = { onUse: options };
+  }
+  if (!options.onUse) {
+    // special optimized case
+    return constStore(value);
+  }
+  return asReadable(applyStoreOptions(new WritableStore(value), options));
+}
+
 /**
  * A convenience function to create {@link Writable} store instances.
  * @param value - initial value of a new writable store.
- * @param onUseFn - A function called when the number of subscribers changes from 0 to 1
+ * @param options - Either an object with {@link StoreOptions | store options}, or directly the onUse function.
+ * The onUse function is a function called when the number of subscribers changes from 0 to 1
  * (but not called when the number of subscribers changes from 1 to 2, ...).
  * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
@@ -572,19 +618,11 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
  * x.set(0); // reset back to the default value
  * ```
  */
-export function writable<T>(
-  value: T,
-  onUseFn: (arg: OnUseArgument<T>) => void | Unsubscriber = noop
-): Writable<T> {
-  const WritableStoreWithOnUse = class extends WritableStore<T> {
-    protected onUse() {
-      const setFn = (v: T) => this.set(v);
-      setFn.set = setFn;
-      setFn.update = (updater: Updater<T>) => this.update(updater);
-      return onUseFn(setFn);
-    }
-  };
-  const store = new WritableStoreWithOnUse(value);
+export function writable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}): Writable<T> {
+  if (typeof options === 'function') {
+    options = { onUse: options };
+  }
+  const store = applyStoreOptions(new WritableStore(value), options);
   return {
     ...asReadable(store),
     set: store.set.bind(store),
@@ -601,11 +639,20 @@ type SubscribableStoresValues<S> = S extends SubscribableStore<infer T>
   : { [K in keyof S]: S[K] extends SubscribableStore<infer T> ? T : never };
 
 type SyncDeriveFn<T, S> = (values: SubscribableStoresValues<S>) => T;
+interface SyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
+  derive: SyncDeriveFn<T, S>;
+}
 type AsyncDeriveFn<T, S> = (
   values: SubscribableStoresValues<S>,
   set: OnUseArgument<T>
 ) => Unsubscriber | void;
+interface AsyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
+  derive: AsyncDeriveFn<T, S>;
+}
 type DeriveFn<T, S> = SyncDeriveFn<T, S> | AsyncDeriveFn<T, S>;
+interface DeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
+  derive: DeriveFn<T, S>;
+}
 function isSyncDeriveFn<T, S>(fn: DeriveFn<T, S>): fn is SyncDeriveFn<T, S> {
   return fn.length <= 1;
 }
@@ -686,7 +733,8 @@ export abstract class DerivedStore<
  * Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state.
  *
  * @param stores - a single store or an array of dependent stores
- * @param deriveFn - a function that is used to compute a new state based on the latest values of dependent stores
+ * @param options - either an object with store options including a derive function or directly the derive function itself.
+ * The derive function is used to compute a new state based on the latest values of dependent stores
  *
  * @example
  * ```typescript
@@ -704,23 +752,27 @@ export abstract class DerivedStore<
  */
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  deriveFn: SyncDeriveFn<T, S>,
+  options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>,
   initialValue?: T
 ): Readable<T>;
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  deriveFn: AsyncDeriveFn<T, S>,
+  options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>,
   initialValue: T
 ): Readable<T>;
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  deriveFn: DeriveFn<T, S>,
+  options: DeriveFn<T, S> | DeriveOptions<T, S>,
   initialValue?: T
 ): Readable<T> {
-  const Derived = isSyncDeriveFn(deriveFn)
+  if (typeof options === 'function') {
+    options = { derive: options };
+  }
+  const { derive, ...opts } = options;
+  const Derived = isSyncDeriveFn(derive)
     ? class extends DerivedStore<T, S> {
         protected derive(values: SubscribableStoresValues<S>) {
-          this.set(deriveFn(values));
+          this.set(derive(values));
         }
       }
     : class extends DerivedStore<T, S> {
@@ -728,8 +780,13 @@ export function derived<T, S extends SubscribableStores>(
           const setFn = (v: T) => this.set(v);
           setFn.set = setFn;
           setFn.update = (updater: Updater<T>) => this.update(updater);
-          return deriveFn(values, setFn);
+          return derive(values, setFn);
         }
       };
-  return asReadable(new Derived(stores, initialValue as any));
+  return asReadable(
+    applyStoreOptions(new Derived(stores, initialValue as any), {
+      ...opts,
+      onUse: undefined /* setting onUse is not allowed from derived */,
+    })
+  );
 }
