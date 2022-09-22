@@ -11,11 +11,67 @@ Main characteristics:
 * can handle both immutable and mutable data;
 * results in compact code with the absolute minimum of boilerplate.
 
-tansu works well with the Angular ecosystem:
+Implementation wise, it is a tiny (500 LOC) library without any external dependencies.
+
+## Comparison with the Svelte stores
+
+Tansu is designed to be and to remain fully compatible with Svelte. Nevertheless, it brings several improvements:
+
+### tansu works well with the Angular ecosystem:
 * works with the standard `async` pipe out of the box;
 * stores can be registered in the DI container at any level (module or component injector).
 
-Implementation wise, it is a tiny (500 LOC) library without any external dependencies.
+### a batch function is available
+
+Depending on multiple stores can lead to some issues. Let's have a look at the following example:
+
+```typescript
+import {writable, derived} from 'svelte/store';
+
+const firstName = writable('Arsène');
+const lastName = writable('Lupin');
+const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
+fullName.subscribe((name) => console.log(name)); // logs any change to fullName
+firstName.set('Sherlock');
+lastName.set('Holmes');
+console.log('Process end');
+```
+
+The output of this example will be:
+
+```
+Arsène Lupin
+Sherlock Lupin
+Sherlock Holmes
+Process end
+```
+
+The fullName store successively went through different states, including an inconsistent one, as `Sherlock Lupin` does not exist! Even if it can be seen as just an intermediate state, it is **fundamental** for a state management to only manage consistent data in order to prevent issues and optimize the code.
+
+In Tansu, the [batch function](https://amadeusitgroup.github.io/tansu/tansu.batch.html) is available to defer **synchronously** (another important point) the derived calculation and solve all kind of multiple dependencies issues.
+
+The previous example is resolved this way:
+
+```typescript
+import {writable, derived, batch} from '@amadeus-it-group/tansu';
+
+const firstName = writable('Arsène');
+const lastName = writable('Lupin');
+const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
+fullName.subscribe((name) => console.log(name)); // logs any change to fullName
+batch(() => {
+    firstName.set('Sherlock');
+    lastName.set('Holmes');
+});
+console.log('Process end');
+```
+With the following output:
+
+```
+Arsène Lupin
+Sherlock Holmes
+Process end
+```
 
 ## Installation
 
