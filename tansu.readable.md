@@ -11,7 +11,7 @@ This interface augments the base [SubscribableStore](./tansu.subscribablestore.m
 ```typescript
 export interface Readable<T> extends SubscribableStore<T> 
 ```
-<b>Extends:</b> [SubscribableStore](./tansu.subscribablestore.md)
+<b>Extends:</b> [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt;
 
 ## Methods
 

@@ -14,11 +14,11 @@ export interface SubscriberObject<T>
 
 ## Properties
 
-|  Property | Type | Description |
-|  --- | --- | --- |
-|  [complete?](./tansu.subscriberobject.complete.md) | any | <i>(Optional)</i> Unused, only declared for compatibility with rxjs. |
-|  [error?](./tansu.subscriberobject.error.md) | any | <i>(Optional)</i> Unused, only declared for compatibility with rxjs. |
-|  [next](./tansu.subscriberobject.next.md) | [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->&lt;T&gt; | A store will call this method every time the store's state is changing. |
-|  [pause](./tansu.subscriberobject.pause.md) | () =&gt; void | A store will call this method when it knows that the value will be changed. A call to this method will be followed by a call to [next](./tansu.subscriberobject.next.md) or to [resume](./tansu.subscriberobject.resume.md)<!-- -->. |
-|  [resume](./tansu.subscriberobject.resume.md) | () =&gt; void | A store will call this method if [pause](./tansu.subscriberobject.pause.md) was called previously and the value finally did not need to change. |
+|  Property | Modifiers | Type | Description |
+|  --- | --- | --- | --- |
+|  [complete?](./tansu.subscriberobject.complete.md) |  | any | <i>(Optional)</i> Unused, only declared for compatibility with rxjs. |
+|  [error?](./tansu.subscriberobject.error.md) |  | any | <i>(Optional)</i> Unused, only declared for compatibility with rxjs. |
+|  [next](./tansu.subscriberobject.next.md) |  | [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->&lt;T&gt; | A store will call this method every time the store's state is changing. |
+|  [pause](./tansu.subscriberobject.pause.md) |  | () =&gt; void | A store will call this method when it knows that the value will be changed. A call to this method will be followed by a call to [next](./tansu.subscriberobject.next.md) or to [resume](./tansu.subscriberobject.resume.md)<!-- -->. |
+|  [resume](./tansu.subscriberobject.resume.md) |  | () =&gt; void | A store will call this method if [pause](./tansu.subscriberobject.pause.md) was called previously and the value finally did not need to change. |
 

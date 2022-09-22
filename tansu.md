@@ -17,11 +17,11 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Function | Description |
 |  --- | --- |
-|  [derived(stores, deriveFn, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
-|  [derived(stores, deriveFn, initialValue)](./tansu.derived_1.md) |  |
+|  [derived(stores, options, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
+|  [derived(stores, options, initialValue)](./tansu.derived_1.md) |  |
 |  [get(store)](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |
-|  [readable(value, onUseFn)](./tansu.readable.md) | A convenience function to create [Readable](./tansu.readable.md) store instances. |
-|  [writable(value, onUseFn)](./tansu.writable.md) | A convenience function to create [Writable](./tansu.writable.md) store instances. |
+|  [readable(value, options)](./tansu.readable.md) | A convenience function to create [Readable](./tansu.readable.md) store instances. |
+|  [writable(value, options)](./tansu.writable.md) | A convenience function to create [Writable](./tansu.writable.md) store instances. |
 
 ## Interfaces
 
@@ -29,6 +29,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  --- | --- |
 |  [OnUseArgument](./tansu.onuseargument.md) |  |
 |  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface with the Angular-specific <code>OnDestroy</code> callback. The [Readable](./tansu.readable.md) stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed. |
+|  [StoreOptions](./tansu.storeoptions.md) | Store options that can be passed to [readable()](./tansu.readable.md) or [writable()](./tansu.writable.md)<!-- -->. |
 |  [SubscribableStore](./tansu.subscribablestore.md) | Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change. |
 |  [SubscriberObject](./tansu.subscriberobject.md) | A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the [next](./tansu.subscriberobject.next.md) method every time the store's state is changing. |
 |  [UnsubscribeObject](./tansu.unsubscribeobject.md) | An object with the <code>unsubscribe</code> method. Subscribable stores might choose to return such object instead of directly returning [UnsubscribeFunction](./tansu.unsubscribefunction.md) from a subscription call. |
@@ -44,6 +45,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Type Alias | Description |
 |  --- | --- |
+|  [OnUseFn](./tansu.onusefn.md) | Type of a function that is called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If it returns a function, that function will be called when the number of subscribers changes from 1 to 0. |
 |  [Subscriber](./tansu.subscriber.md) | Expresses interest in store value changes over time. It can be either: - a callback function: [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->; - a partial observer: [SubscriberObject](./tansu.subscriberobject.md)<!-- -->. |
 |  [SubscriberFunction](./tansu.subscriberfunction.md) | A callback invoked when a store value changes. It is called with the latest value of a given store. |
 |  [UnsubscribeFunction](./tansu.unsubscribefunction.md) | A function to unsubscribe from value change notifications. |

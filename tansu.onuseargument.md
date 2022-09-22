@@ -12,8 +12,8 @@ export interface OnUseArgument<T>
 
 ## Properties
 
-|  Property | Type | Description |
-|  --- | --- | --- |
-|  [set](./tansu.onuseargument.set.md) | (value: T) =&gt; void |  |
-|  [update](./tansu.onuseargument.update.md) | (updater: [Updater](./tansu.updater.md)<!-- -->&lt;T&gt;) =&gt; void |  |
+|  Property | Modifiers | Type | Description |
+|  --- | --- | --- | --- |
+|  [set](./tansu.onuseargument.set.md) |  | (value: T) =&gt; void |  |
+|  [update](./tansu.onuseargument.update.md) |  | (updater: [Updater](./tansu.updater.md)<!-- -->&lt;T&gt;) =&gt; void |  |
 

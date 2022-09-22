@@ -11,7 +11,7 @@ Base class that can be extended to easily create a custom [Readable](./tansu.rea
 ```typescript
 export declare abstract class Store<T> implements Readable<T> 
 ```
-<b>Implements:</b> [Readable](./tansu.readable.md)
+<b>Implements:</b> [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 
 ## Example
 
@@ -55,10 +55,11 @@ unsubscribe(); // stops notifications and corresponding logging
 |  --- | --- | --- |
 |  [\[symbolObservable\]()](./tansu.store._symbolobservable_.md) |  |  |
 |  [ngOnDestroy()](./tansu.store.ngondestroy.md) |  |  |
-|  [onUse()](./tansu.store.onuse.md) |  | Function called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If a function is returned, it will be called when the number of subscribers changes from 1 to 0. |
-|  [pauseSubscribers()](./tansu.store.pausesubscribers.md) |  | Puts the store in the paused state, which means it will soon update its value. |
-|  [resumeSubscribers()](./tansu.store.resumesubscribers.md) |  | Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->). |
-|  [set(value)](./tansu.store.set.md) |  | Replaces store's state with the provided value. Equivalent of [Writable.set()](./tansu.writable.set.md)<!-- -->, but internal to the store. |
+|  [notEqual(a, b)](./tansu.store.notequal.md) | <code>protected</code> | Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying listeners) if the value did not change. The default logic is to return true if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. This method can be overridden by subclasses to change the logic. |
+|  [onUse()](./tansu.store.onuse.md) | <code>protected</code> | Function called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If a function is returned, it will be called when the number of subscribers changes from 1 to 0. |
+|  [pauseSubscribers()](./tansu.store.pausesubscribers.md) | <code>protected</code> | Puts the store in the paused state, which means it will soon update its value. |
+|  [resumeSubscribers()](./tansu.store.resumesubscribers.md) | <code>protected</code> | Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->). |
+|  [set(value)](./tansu.store.set.md) | <code>protected</code> | Replaces store's state with the provided value. Equivalent of [Writable.set()](./tansu.writable.set.md)<!-- -->, but internal to the store. |
 |  [subscribe(subscriber)](./tansu.store.subscribe.md) |  | Default Implementation of the [SubscribableStore.subscribe()](./tansu.subscribablestore.subscribe.md)<!-- -->, not meant to be overridden. |
-|  [update(updater)](./tansu.store.update.md) |  | Updates store's state by using an [Updater](./tansu.updater.md) function. Equivalent of [Writable.update()](./tansu.writable.update.md)<!-- -->, but internal to the store. |
+|  [update(updater)](./tansu.store.update.md) | <code>protected</code> | Updates store's state by using an [Updater](./tansu.updater.md) function. Equivalent of [Writable.update()](./tansu.writable.update.md)<!-- -->, but internal to the store. |
 

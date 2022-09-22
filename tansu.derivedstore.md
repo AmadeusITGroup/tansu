@@ -9,7 +9,7 @@
 ```typescript
 export declare abstract class DerivedStore<T, S extends SubscribableStores = SubscribableStores> extends Store<T> 
 ```
-<b>Extends:</b> [Store](./tansu.store.md)
+<b>Extends:</b> [Store](./tansu.store.md)<!-- -->&lt;T&gt;
 
 ## Constructors
 
@@ -21,6 +21,6 @@ export declare abstract class DerivedStore<T, S extends SubscribableStores = Sub
 
 |  Method | Modifiers | Description |
 |  --- | --- | --- |
-|  [derive(values)](./tansu.derivedstore.derive.md) |  |  |
-|  [onUse()](./tansu.derivedstore.onuse.md) |  |  |
+|  [derive(values)](./tansu.derivedstore.derive.md) | <code>protected</code> |  |
+|  [onUse()](./tansu.derivedstore.onuse.md) | <code>protected</code> |  |
 

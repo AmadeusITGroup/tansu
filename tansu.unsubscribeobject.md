@@ -14,7 +14,7 @@ export interface UnsubscribeObject
 
 ## Properties
 
-|  Property | Type | Description |
-|  --- | --- | --- |
-|  [unsubscribe](./tansu.unsubscribeobject.unsubscribe.md) | [UnsubscribeFunction](./tansu.unsubscribefunction.md) | A method that acts as the [UnsubscribeFunction](./tansu.unsubscribefunction.md)<!-- -->. |
+|  Property | Modifiers | Type | Description |
+|  --- | --- | --- | --- |
+|  [unsubscribe](./tansu.unsubscribeobject.unsubscribe.md) |  | [UnsubscribeFunction](./tansu.unsubscribefunction.md) | A method that acts as the [UnsubscribeFunction](./tansu.unsubscribefunction.md)<!-- -->. |
 

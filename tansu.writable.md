@@ -11,7 +11,7 @@ Builds on top of [Readable](./tansu.readable.md) and represents a store that can
 ```typescript
 export interface Writable<T> extends Readable<T> 
 ```
-<b>Extends:</b> [Readable](./tansu.readable.md)
+<b>Extends:</b> [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 
 ## Example
 
