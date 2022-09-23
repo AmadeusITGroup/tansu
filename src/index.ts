@@ -752,13 +752,13 @@ export abstract class DerivedStore<
  */
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>,
-  initialValue?: T
+  options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>,
+  initialValue: T
 ): Readable<T>;
 export function derived<T, S extends SubscribableStores>(
   stores: S,
-  options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>,
-  initialValue: T
+  options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>,
+  initialValue?: T
 ): Readable<T>;
 export function derived<T, S extends SubscribableStores>(
   stores: S,
