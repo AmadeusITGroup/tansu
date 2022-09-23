@@ -9,7 +9,7 @@ A convenience function to create a new store with a state computed from the late
 <b>Signature:</b>
 
 ```typescript
-export declare function derived<T, S extends SubscribableStores>(stores: S, options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>, initialValue?: T): Readable<T>;
+export declare function derived<T, S extends SubscribableStores>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
 ```
 
 ## Parameters
@@ -17,8 +17,8 @@ export declare function derived<T, S extends SubscribableStores>(stores: S, opti
 |  Parameter | Type | Description |
 |  --- | --- | --- |
 |  stores | S | a single store or an array of dependent stores |
-|  options | SyncDeriveFn&lt;T, S&gt; \| SyncDeriveOptions&lt;T, S&gt; | either an object with store options including a derive function or directly the derive function itself. The derive function is used to compute a new state based on the latest values of dependent stores |
-|  initialValue | T | <i>(Optional)</i> |
+|  options | AsyncDeriveFn&lt;T, S&gt; \| AsyncDeriveOptions&lt;T, S&gt; | either an object with store options including a derive function or directly the derive function itself. The derive function is used to compute a new state based on the latest values of dependent stores |
+|  initialValue | T |  |
 
 <b>Returns:</b>
 

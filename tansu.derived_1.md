@@ -7,7 +7,7 @@
 <b>Signature:</b>
 
 ```typescript
-export declare function derived<T, S extends SubscribableStores>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
+export declare function derived<T, S extends SubscribableStores>(stores: S, options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>, initialValue?: T): Readable<T>;
 ```
 
 ## Parameters
@@ -15,8 +15,8 @@ export declare function derived<T, S extends SubscribableStores>(stores: S, opti
 |  Parameter | Type | Description |
 |  --- | --- | --- |
 |  stores | S |  |
-|  options | AsyncDeriveFn&lt;T, S&gt; \| AsyncDeriveOptions&lt;T, S&gt; |  |
-|  initialValue | T |  |
+|  options | SyncDeriveFn&lt;T, S&gt; \| SyncDeriveOptions&lt;T, S&gt; |  |
+|  initialValue | T | <i>(Optional)</i> |
 
 <b>Returns:</b>
 
