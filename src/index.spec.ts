@@ -971,6 +971,26 @@ describe('stores', () => {
       });
     });
 
+    it('should infer types automatically in the async case', () => {
+      const a = writable(1);
+      const b = writable(2);
+      const sum = derived(
+        [a, b],
+        ([a, b], set) => {
+          set(a + b);
+        },
+        0
+      );
+      expect(get(sum)).toBe(3);
+    });
+
+    it('should infer types automatically in the sync case', () => {
+      const a = writable(1);
+      const b = writable(2);
+      const sum = derived([a, b], ([a, b]) => a + b);
+      expect(get(sum)).toBe(3);
+    });
+
     it('should call clean-up function returned in deriveFn with derived', () => {
       const a = writable(1);
       const cleanUpFn = jasmine.createSpy('cleanupFn').and.callThrough();
