@@ -6,6 +6,7 @@ import {
   writable,
   get,
   readable,
+  asReadable,
   batch,
 } from './index';
 import { from } from 'rxjs';
@@ -702,6 +703,25 @@ describe('stores', () => {
       expect(values).toEqual([2]);
 
       unsubscribe();
+    });
+
+    it('should work with asReadable to expose the store read-only', () => {
+      const writableStore = writable(5);
+      const readonlyStore = asReadable(writableStore);
+      const values: number[] = [];
+      const unsubscribe = readonlyStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([5]);
+      writableStore.set(6);
+      expect(values).toEqual([5, 6]);
+      unsubscribe();
+      writableStore.set(7);
+      expect(values).toEqual([5, 6]);
+
+      expect((readonlyStore as any).set).toBeUndefined();
+      expect((readonlyStore as any).update).toBeUndefined();
+      expect(readonlyStore[Symbol.observable || '@@observable']()).toBe(readonlyStore);
     });
   });
 

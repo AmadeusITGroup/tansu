@@ -161,11 +161,20 @@ const returnThis = function <T>(this: T): T {
   return this;
 };
 
-const asReadable = <T>(store: Store<T>): Readable<T> => ({
-  subscribe: store.subscribe.bind(store),
-  ngOnDestroy: store.ngOnDestroy.bind(store),
-  [symbolObservable]: returnThis,
-});
+/**
+ * Returns a wrapper (for the given store) which only exposes the {@link Readable} interface.
+ * This allows to easily expose any store as read-only.
+ *
+ * @param store - store to wrap
+ * @returns A wrapper which only exposes the {@link Readable} interface.
+ */
+export function asReadable<T>(store: Readable<T>): Readable<T> {
+  return {
+    subscribe: store.subscribe.bind(store),
+    ngOnDestroy: store.ngOnDestroy.bind(store),
+    [symbolObservable]: returnThis,
+  };
+}
 
 const queueProcess = Symbol();
 let willProcessQueue = false;
