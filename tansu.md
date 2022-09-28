@@ -17,6 +17,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Function | Description |
 |  --- | --- |
+|  [asReadable(store)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This allows to easily expose any store as read-only. |
 |  [derived(stores, options, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
 |  [derived(stores, options, initialValue)](./tansu.derived_1.md) |  |
 |  [get(store)](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |

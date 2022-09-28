@@ -18,6 +18,5 @@ export interface Readable<T> extends SubscribableStore<T>
 |  Method | Description |
 |  --- | --- |
 |  [\[Symbol.observable\]()](./tansu.readable._symbol.observable_.md) |  |
-|  [ngOnDestroy()](./tansu.readable.ngondestroy.md) |  |
 |  [subscribe(subscriber)](./tansu.readable.subscribe.md) |  |
 
