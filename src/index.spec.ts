@@ -368,31 +368,6 @@ describe('stores', () => {
       expect(values).toEqual([0, 1]);
     });
 
-    it('should stop subscriber notification on store destroy', () => {
-      class TickStore extends Store<number> {
-        constructor() {
-          super(0);
-        }
-
-        tick() {
-          this.update((n) => n + 1);
-        }
-      }
-
-      const store = new TickStore();
-      let value: undefined | number;
-      store.subscribe((v) => (value = v));
-
-      expect(value).toBe(0);
-
-      store.tick();
-      expect(value).toBe(1);
-
-      store.ngOnDestroy();
-      store.tick();
-      expect(value).toBe(1);
-    });
-
     it('should work with AsyncPipe', () => {
       @Component({
         template: `Value: {{ store | async }}`,
@@ -413,7 +388,7 @@ describe('stores', () => {
       fixture.destroy();
     });
 
-    it('should call ngOnDestroy when injected class extending Store is destroyed', () => {
+    it('should work to inject a class extending Store', () => {
       @Injectable()
       class MyStore extends Store<number> {
         constructor() {
@@ -438,16 +413,13 @@ describe('stores', () => {
       const fixture = TestBed.createComponent(MyComponent);
       const componentInstance = fixture.componentInstance;
       fixture.detectChanges();
+      expect((componentInstance.store as any)._subscribers.size).toBe(1);
       expect(fixture.nativeElement.textContent).toBe('Value: 0');
       componentInstance.store.increment();
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
-      const spySubscriberClear = spyOn(
-        (componentInstance.store as any)._subscribers as Set<any>,
-        'clear'
-      );
       fixture.destroy();
-      expect(spySubscriberClear).toHaveBeenCalled();
+      expect((componentInstance.store as any)._subscribers.size).toBe(0);
     });
   });
 

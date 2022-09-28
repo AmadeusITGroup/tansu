@@ -97,7 +97,6 @@ export interface SubscribableStore<T> {
  */
 export interface Readable<T> extends SubscribableStore<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
-  ngOnDestroy(): void;
   [Symbol.observable](): Readable<T>;
 }
 
@@ -171,7 +170,6 @@ const returnThis = function <T>(this: T): T {
 export function asReadable<T>(store: Readable<T>): Readable<T> {
   return {
     subscribe: store.subscribe.bind(store),
-    ngOnDestroy: store.ngOnDestroy.bind(store),
     [symbolObservable]: returnThis,
   };
 }
@@ -476,14 +474,6 @@ export abstract class Store<T> implements Readable<T> {
     return unsubscribe;
   }
 
-  ngOnDestroy(): void {
-    const hasSubscribers = this._subscribers.size > 0;
-    this._subscribers.clear();
-    if (hasSubscribers) {
-      this._stop();
-    }
-  }
-
   [symbolObservable](): this {
     return this;
   }
@@ -544,7 +534,6 @@ function constStore<T>(value: T): Readable<T> {
       return noopUnsubscribe;
     },
     [symbolObservable]: returnThis,
-    ngOnDestroy: noop,
   };
 }
 
