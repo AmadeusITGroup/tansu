@@ -1,4 +1,6 @@
-![build](https://github.com/AmadeusITGroup/tansu/workflows/ci/badge.svg) [![codecov](https://codecov.io/gh/AmadeusITGroup/tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/tansu)
+[![npm](https://img.shields.io/npm/v/@amadeus-it-group/tansu)](https://www.npmjs.com/package/@amadeus-it-group/tansu)
+![build](https://github.com/AmadeusITGroup/tansu/workflows/ci/badge.svg)
+[![codecov](https://codecov.io/gh/AmadeusITGroup/tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/tansu)
 
 # tansu
 
