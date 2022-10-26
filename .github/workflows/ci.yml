@@ -22,7 +22,7 @@ jobs:
             yarn-
       - run: yarn --frozen-lockfile
       - run: yarn lint
-      - run: yarn check-format
+      - run: yarn format:check
       - run: yarn test
       - uses: codecov/codecov-action@e3c560433a6cc60aec8812599b7844a7b4fa0d71 # v3.0.0
         with:
