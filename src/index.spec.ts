@@ -633,18 +633,33 @@ describe('stores', () => {
       const strStore = writable('foo');
       const boolStore = writable(true);
       const undefinedStore = writable(undefined);
+      const nullStore = writable(null);
 
       numStore.subscribe((v) => values.push(v));
       strStore.subscribe((v) => values.push(v));
       boolStore.subscribe((v) => values.push(v));
       undefinedStore.subscribe((v) => values.push(v));
-      expect(values).toEqual([5, 'foo', true, undefined]);
+      nullStore.subscribe((v) => values.push(v));
+      expect(values).toEqual([5, 'foo', true, undefined, null]);
 
       numStore.set(5);
       strStore.set('foo');
       boolStore.set(true);
       undefinedStore.set(undefined);
-      expect(values).toEqual([5, 'foo', true, undefined]);
+      nullStore.set(null);
+      expect(values).toEqual([5, 'foo', true, undefined, null]);
+    });
+
+    it('should re-emit for an object even if it does not change', () => {
+      const values: any[] = [];
+      const ref = {};
+      const objectStore = writable(ref);
+
+      objectStore.subscribe((v) => values.push(v));
+      expect(values).toEqual([ref]);
+
+      objectStore.set(ref);
+      expect(values).toEqual([ref, ref]);
     });
 
     it('should not emit when setting NaN', () => {

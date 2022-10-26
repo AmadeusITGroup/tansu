@@ -341,11 +341,7 @@ export abstract class Store<T> implements Readable<T> {
    * @returns true if a and b are considered different.
    */
   protected notEqual(a: T, b: T): boolean {
-    const tOfA = typeof a;
-    if (tOfA !== 'function' && tOfA !== 'object') {
-      return !Object.is(a, b);
-    }
-    return true;
+    return !Object.is(a, b) || (a && typeof a === 'object') || typeof a === 'function';
   }
 
   /**
