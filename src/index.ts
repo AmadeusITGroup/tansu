@@ -93,7 +93,8 @@ export interface SubscribableStore<T> {
 }
 
 /**
- * This interface augments the base {@link SubscribableStore} interface with the Angular-specific `OnDestroy` callback. The {@link Readable} stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed.
+ * This interface augments the base {@link SubscribableStore} interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method.
+ * For {@link https://rxjs.dev/api/index/interface/InteropObservable | interoperability with rxjs}, it also implements the `[Symbol.observable]` method.
  */
 export interface Readable<T> extends SubscribableStore<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
