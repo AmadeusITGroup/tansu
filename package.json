@@ -46,7 +46,8 @@
     "build:api": "api-extractor run",
     "build:package": "cp README.md src/package.json dist/package",
     "build": "yarn build:rollup && yarn build:dts && yarn build:api && yarn build:package",
-    "check-format": "prettier --check .",
+    "format:check": "prettier --check .",
+    "format:fix": "prettier --write .",
     "docs": "api-documenter markdown -i temp -o dist/docs"
   },
   "husky": {
