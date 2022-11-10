@@ -15,13 +15,15 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '16.x'
-      - run: yarn --frozen-lockfile
-      - name: yarn version
+      - run: yarn --immutable
+      - name: npm version
         working-directory: src
         run: |
           git config --global user.name github-actions
           git config --global user.email github-actions@github.com
-          yarn version --new-version ${{ inputs.version }}
+          npm version ${{ inputs.version }}
+          git commit -m v${{ inputs.version }}
+          git tag v${{ inputs.version }}
       - run: git show HEAD
       - run: yarn build
       - run: yarn docs

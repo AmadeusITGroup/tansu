@@ -15,9 +15,9 @@ jobs:
         with:
           node-version: '16.x'
       - run: yarn install
-      - run: yarn upgrade --latest --caret
+      - run: yarn up --caret '**'
       - name: Create pull request
-        uses: peter-evans/create-pull-request@bd72e1b7922d417764d27d30768117ad7da78a0e # v4.0.2
+        uses: peter-evans/create-pull-request@b4d51739f96fca8047ad065eccef63442d8e99f7 # v4.2.0
         with:
           commit-message: 'chore: Update all dependencies'
           branch: dependencies

@@ -4,3 +4,12 @@ temp
 coverage
 yarn-error.log 
 .angular
+
+# cf https://yarnpkg.com/getting-started/qa#which-files-should-be-gitignored (not using Zero-Installs) :
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

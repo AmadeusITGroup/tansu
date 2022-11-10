@@ -8,23 +8,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '16.x'
-      - id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          path: .yarn/cache
           key: yarn-${{ hashFiles('yarn.lock') }}
           restore-keys: |
             yarn-
-      - run: yarn --frozen-lockfile
+      - run: yarn --immutable
       - run: yarn lint
       - run: yarn format:check
       - run: yarn test
-      - uses: codecov/codecov-action@e3c560433a6cc60aec8812599b7844a7b4fa0d71 # v3.0.0
+      - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 #v3.1.1
         with:
           file: coverage/lcov.info
       - run: yarn build
