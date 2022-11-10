@@ -104,7 +104,7 @@ export interface Readable<T> extends SubscribableStore<T> {
 /**
  * A function that can be used to update store's value. This function is called with the current value and should return new store value.
  */
-export type Updater<T> = (value: T) => T;
+export type Updater<T, U = T> = (value: T) => U;
 
 /**
  * Builds on top of {@link Readable} and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
@@ -119,18 +119,18 @@ export type Updater<T> = (value: T) => T;
  * counterStore.update(currentValue => currentValue + 1);
  * ```
  */
-export interface Writable<T> extends Readable<T> {
+export interface Writable<T, U = T> extends Readable<T> {
   /**
    * Replaces store's state with the provided value.
    * @param value - value to be used as the new state of a store.
    */
-  set(value: T): void;
+  set(value: U): void;
 
   /**
    * Updates store's state by using an {@link Updater} function.
    * @param updater - a function that takes the current state as an argument and returns the new state.
    */
-  update(updater: Updater<T>): void;
+  update(updater: Updater<T, U>): void;
 }
 
 const noop = () => {};
