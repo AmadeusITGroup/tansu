@@ -15,6 +15,9 @@ import {
   computed,
   untrack,
   ReadableSignal,
+  StoresInput,
+  StoresInputValues,
+  StoreInput,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
@@ -51,12 +54,18 @@ const customSimpleWritable = <T>(
   };
 };
 
-const switchMap = <T, U>(
-  store: SubscribableStore<T>,
-  fn: (value: T) => SubscribableStore<U>,
+const notObjectIs = (a: any, b: any): boolean => !Object.is(a, b);
+
+const switchMap = <S extends StoresInput, U>(
+  store: S,
+  fn: (value: StoresInputValues<S>) => StoreInput<U>,
   options?: Omit<StoreOptions<U>, 'onUse'>
 ): Readable<U> =>
-  derived(store, { ...options, derive: (value, set) => fn(value).subscribe(set) }, undefined as U);
+  derived(
+    derived(store, { notEqual: notObjectIs, derive: (value) => fn(value) }),
+    { ...options, derive: (store, set) => asReadable(store).subscribe(set) },
+    undefined as U
+  );
 
 describe('stores', () => {
   describe('base', () => {
@@ -1734,6 +1743,49 @@ describe('stores', () => {
       unsubscribe();
       a.set(4);
       expect(values).toEqual([0, 1, 2, 3]);
+    });
+
+    it('should not unsubscribe and subscribe again in switchMap if the store did not change', () => {
+      const a = writable(1);
+      const b = writable(2);
+      const c = writable(0);
+      const spy = spyOn(a, 'subscribe').and.callThrough();
+      const d = switchMap(c, (c) => (c % 2 === 0 ? a : b));
+      const values: number[] = [];
+      const unsubscribe = d.subscribe((value) => values.push(value));
+      expect(spy).toHaveBeenCalledTimes(1);
+      spy.calls.reset();
+      expect(values).toEqual([1]);
+      c.set(2);
+      expect(values).toEqual([1]);
+      expect(spy).not.toHaveBeenCalled();
+      unsubscribe();
+    });
+
+    it('should work with switchMap with multiple stores as inputs', () => {
+      const a = writable(0);
+      const b = writable(1);
+      const c = writable<SubscribableStore<number> | null>(null);
+      const d = writable(a);
+      const e = switchMap([c, d], ([c, d]) => c ?? d);
+      const values: number[] = [];
+      const unsubscribe = e.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      c.set(b);
+      expect(values).toEqual([0, 1]);
+      b.set(2);
+      expect(values).toEqual([0, 1, 2]);
+      a.set(3);
+      expect(values).toEqual([0, 1, 2]);
+      c.set(null);
+      expect(values).toEqual([0, 1, 2, 3]);
+      d.set(b);
+      expect(values).toEqual([0, 1, 2, 3, 2]);
+      b.set(4);
+      expect(values).toEqual([0, 1, 2, 3, 2, 4]);
+      unsubscribe();
+      b.set(5);
+      expect(values).toEqual([0, 1, 2, 3, 2, 4]);
     });
 
     it('should work with switchMap and multiple levels of derived', () => {
