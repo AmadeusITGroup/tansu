@@ -1,6 +1,5 @@
 {
   "name": "@amadeus-it-group/tansu",
-  "peerDependencies": {},
   "devDependencies": {
     "@angular-devkit/build-angular": "^14.2.7",
     "@angular/cli": "^14.2.7",
@@ -40,12 +39,11 @@
     "test-tdd": "ng test",
     "clean": "rm -rf dist temp",
     "lint": "eslint src/{,**/}*.ts",
-    "prebuild": "yarn clean",
     "build:rollup": "rollup --failAfterWarnings -c",
     "build:dts": "tsc -p tsconfig.d.json",
     "build:api": "api-extractor run",
     "build:package": "cp README.md src/package.json dist/package",
-    "build": "yarn build:rollup && yarn build:dts && yarn build:api && yarn build:package",
+    "build": "yarn clean && yarn build:rollup && yarn build:dts && yarn build:api && yarn build:package",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "docs": "api-documenter markdown -i temp -o dist/docs"
@@ -60,5 +58,6 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
-  }
+  },
+  "packageManager": "yarn@3.2.4"
 }
