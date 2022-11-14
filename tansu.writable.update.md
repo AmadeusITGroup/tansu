@@ -9,14 +9,14 @@ Updates store's state by using an [Updater](./tansu.updater.md) function.
 <b>Signature:</b>
 
 ```typescript
-update(updater: Updater<T>): void;
+update(updater: Updater<T, U>): void;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  updater | [Updater](./tansu.updater.md)<!-- -->&lt;T&gt; | a function that takes the current state as an argument and returns the new state. |
+|  updater | [Updater](./tansu.updater.md)<!-- -->&lt;T, U&gt; | a function that takes the current state as an argument and returns the new state. |
 
 <b>Returns:</b>
 

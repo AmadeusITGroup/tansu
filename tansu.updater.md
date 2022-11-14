@@ -9,5 +9,5 @@ A function that can be used to update store's value. This function is called wit
 <b>Signature:</b>
 
 ```typescript
-export declare type Updater<T> = (value: T) => T;
+export declare type Updater<T, U = T> = (value: T) => U;
 ```

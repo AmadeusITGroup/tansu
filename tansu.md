@@ -29,7 +29,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  Interface | Description |
 |  --- | --- |
 |  [OnUseArgument](./tansu.onuseargument.md) |  |
-|  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface with the Angular-specific <code>OnDestroy</code> callback. The [Readable](./tansu.readable.md) stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed. |
+|  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface by requiring the return value of the subscribe method to be both a function and an object with the <code>unsubscribe</code> method. For [interoperability with rxjs](https://rxjs.dev/api/index/interface/InteropObservable)<!-- -->, it also implements the <code>[Symbol.observable]</code> method. |
 |  [StoreOptions](./tansu.storeoptions.md) | Store options that can be passed to [readable()](./tansu.readable.md) or [writable()](./tansu.writable.md)<!-- -->. |
 |  [SubscribableStore](./tansu.subscribablestore.md) | Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change. |
 |  [SubscriberObject](./tansu.subscriberobject.md) | A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the [next](./tansu.subscriberobject.next.md) method every time the store's state is changing. |

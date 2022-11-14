@@ -9,7 +9,7 @@ Builds on top of [Readable](./tansu.readable.md) and represents a store that can
 <b>Signature:</b>
 
 ```typescript
-export interface Writable<T> extends Readable<T> 
+export interface Writable<T, U = T> extends Readable<T> 
 ```
 <b>Extends:</b> [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 

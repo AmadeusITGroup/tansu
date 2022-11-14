@@ -9,14 +9,14 @@ Replaces store's state with the provided value.
 <b>Signature:</b>
 
 ```typescript
-set(value: T): void;
+set(value: U): void;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  value | T | value to be used as the new state of a store. |
+|  value | U | value to be used as the new state of a store. |
 
 <b>Returns:</b>
 

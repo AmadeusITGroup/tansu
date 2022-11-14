@@ -4,7 +4,7 @@
 
 ## Readable interface
 
-This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface with the Angular-specific `OnDestroy` callback. The [Readable](./tansu.readable.md) stores can be registered in the Angular DI container and will automatically discard all the subscription when a given store is destroyed.
+This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method. For [interoperability with rxjs](https://rxjs.dev/api/index/interface/InteropObservable)<!-- -->, it also implements the `[Symbol.observable]` method.
 
 <b>Signature:</b>
 
