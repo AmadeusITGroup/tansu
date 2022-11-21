@@ -1027,6 +1027,38 @@ describe('stores', () => {
       expect(cleanUpFn).toHaveBeenCalledTimes(1);
       expect(cleanUpFn).toHaveBeenCalledWith(3);
     });
+
+    it('should work with a derived function that calls set on a store it depends on without any impact on its own input value', () => {
+      const defaultValue = writable(0);
+      const ownValue = writable(undefined as number | undefined);
+      const dirtyValue = derived([ownValue, defaultValue], ([ownValue, defaultValue]) =>
+        ownValue === undefined ? defaultValue : ownValue
+      );
+      let derivedCalls = 0;
+      let doSet = true;
+      const finalValue = derived(dirtyValue, (value) => {
+        derivedCalls++;
+        if (doSet) {
+          ownValue.set(value);
+        }
+        return value;
+      });
+      const calls: number[] = [];
+      const unsubscribe = finalValue.subscribe((n: number) => calls.push(n));
+      expect(derivedCalls).toBe(1);
+      expect(calls).toEqual([0]);
+      expect(get(ownValue)).toBe(0);
+      doSet = false;
+      ownValue.set(undefined);
+      expect(derivedCalls).toBe(1);
+      expect(calls).toEqual([0]);
+      doSet = true;
+      defaultValue.set(1);
+      expect(derivedCalls).toBe(2);
+      expect(calls).toEqual([0, 1]);
+      expect(get(ownValue)).toBe(1);
+      unsubscribe();
+    });
   });
 
   describe('batch', () => {

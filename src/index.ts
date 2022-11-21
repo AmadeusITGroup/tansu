@@ -305,6 +305,10 @@ export abstract class Store<T> implements Readable<T> {
 
   private [queueProcess](): void {
     this._subscribersPaused = false;
+    if (!this._cleanupFn) {
+      // subscriber not yet initialized
+      return;
+    }
     const valueIndex = this._valueIndex;
     const value = this._value;
     const notEqualCache = {
