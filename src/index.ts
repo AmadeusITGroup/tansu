@@ -305,10 +305,6 @@ export abstract class Store<T> implements Readable<T> {
 
   private [queueProcess](): void {
     this._subscribersPaused = false;
-    if (!this._cleanupFn) {
-      // subscriber not yet initialized
-      return;
-    }
     const valueIndex = this._valueIndex;
     const value = this._value;
     const notEqualCache = {
@@ -317,6 +313,10 @@ export abstract class Store<T> implements Readable<T> {
       // which is known to be different because notEqual is called in the set method
     };
     for (const subscriber of [...this._subscribers]) {
+      if (subscriber._valueIndex === 0) {
+        // ignore subscribers which were not yet called synchronously
+        continue;
+      }
       let different = notEqualCache[subscriber._valueIndex];
       if (different == null) {
         different = this.notEqual(subscriber._value, value);
@@ -369,6 +369,10 @@ export abstract class Store<T> implements Readable<T> {
     if (!this._subscribersPaused) {
       this._subscribersPaused = true;
       for (const subscriber of [...this._subscribers]) {
+        if (subscriber._valueIndex === 0) {
+          // ignore subscribers which were not yet called synchronously
+          continue;
+        }
         subscriber.pause();
       }
     }
@@ -400,10 +404,6 @@ export abstract class Store<T> implements Readable<T> {
     if (this.notEqual(this._value, value)) {
       this._valueIndex++;
       this._value = value;
-      if (!this._cleanupFn) {
-        // subscriber not yet initialized
-        return;
-      }
       this.pauseSubscribers();
     }
     this.resumeSubscribers();

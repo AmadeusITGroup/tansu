@@ -1059,6 +1059,28 @@ describe('stores', () => {
       expect(get(ownValue)).toBe(1);
       unsubscribe();
     });
+
+    it('should work with a derived function that subscribes to itself', () => {
+      const store = writable(0);
+      let derivedCalls = 0;
+      let innerUnsubscribe: undefined | (() => void);
+      const innerSubscriptionCalls: any[] = [];
+      const derivedStore = derived(store, (value) => {
+        derivedCalls++;
+        if (!innerUnsubscribe) {
+          // the first call of the listener should contain undefined as the value is not yet computed
+          innerUnsubscribe = derivedStore.subscribe((value) => innerSubscriptionCalls.push(value));
+        }
+        return value;
+      });
+      const calls: number[] = [];
+      const unsubscribe = derivedStore.subscribe((n: number) => calls.push(n));
+      expect(derivedCalls).toBe(1);
+      expect(innerSubscriptionCalls).toEqual([undefined, 0]);
+      expect(calls).toEqual([0]);
+      unsubscribe();
+      innerUnsubscribe!();
+    });
   });
 
   describe('batch', () => {
@@ -1289,17 +1311,17 @@ describe('stores', () => {
 
     it('should work when first subscribing to a derived store inside batch', () => {
       const a = writable(0);
-      const b = derived(a, (a) => a + 1);
+      const b = derived(a, (a) => a + 1, -1);
       const values: number[] = [];
       let unsubscribe!: () => void;
       batch(() => {
         a.set(1);
         unsubscribe = b.subscribe((v) => values.push(v));
-        expect(values).toEqual([2]);
+        expect(values).toEqual([-1]); // gets the initial value of store b to avoid temporary computation
       });
-      expect(values).toEqual([2]);
+      expect(values).toEqual([-1, 2]);
       a.set(2);
-      expect(values).toEqual([2, 3]);
+      expect(values).toEqual([-1, 2, 3]);
       unsubscribe();
     });
 
