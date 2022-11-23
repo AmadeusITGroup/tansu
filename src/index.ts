@@ -663,11 +663,14 @@ export abstract class DerivedStore<
   T,
   S extends SubscribableStores = SubscribableStores
 > extends Store<T> {
-  #stores: S;
+  readonly #isArray: boolean;
+  readonly #stores: SubscribableStore<any>[];
 
   constructor(stores: S, initialValue: T) {
     super(initialValue);
-    this.#stores = stores;
+    const isArray = Array.isArray(stores);
+    this.#isArray = isArray;
+    this.#stores = isArray ? [...stores] : [stores];
   }
 
   protected onUse(): Unsubscriber | void {
@@ -675,11 +678,8 @@ export abstract class DerivedStore<
     let pending = 0;
     let changed = 0;
 
-    const stores = this.#stores;
-    const isArray = Array.isArray(stores);
-    const storesArr = isArray
-      ? (stores as readonly SubscribableStore<any>[])
-      : [stores as SubscribableStore<any>];
+    const isArray = this.#isArray;
+    const storesArr = this.#stores;
     const dependantValues = new Array(storesArr.length);
 
     let cleanupFn: null | Unsubscriber = null;
