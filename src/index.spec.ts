@@ -391,11 +391,18 @@ describe('stores', () => {
     it('should work to inject a class extending Store', () => {
       @Injectable()
       class MyStore extends Store<number> {
+        hasListeners = false;
         constructor() {
           super(0);
         }
         increment() {
           this.update((value) => value + 1);
+        }
+        protected onUse() {
+          this.hasListeners = true;
+          return () => {
+            this.hasListeners = false;
+          };
         }
       }
 
@@ -413,13 +420,13 @@ describe('stores', () => {
       const fixture = TestBed.createComponent(MyComponent);
       const componentInstance = fixture.componentInstance;
       fixture.detectChanges();
-      expect((componentInstance.store as any)._subscribers.size).toBe(1);
+      expect(componentInstance.store.hasListeners).toBe(true);
       expect(fixture.nativeElement.textContent).toBe('Value: 0');
       componentInstance.store.increment();
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
       fixture.destroy();
-      expect((componentInstance.store as any)._subscribers.size).toBe(0);
+      expect(componentInstance.store.hasListeners).toBe(false);
     });
   });
 

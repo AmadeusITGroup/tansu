@@ -280,39 +280,42 @@ export function get<T>(store: SubscribableStore<T>): T {
  * ```
  */
 export abstract class Store<T> implements Readable<T> {
-  private _subscribers = new Set<PrivateSubscriberObject<T>>();
-  private _cleanupFn: null | Unsubscriber = null;
-  private _subscribersPaused = false;
-  private _valueIndex = 1;
+  #subscribers = new Set<PrivateSubscriberObject<T>>();
+  #cleanupFn: null | Unsubscriber = null;
+  #subscribersPaused = false;
+  #valueIndex = 1;
+  #value: T;
 
   /**
    *
-   * @param _value - Initial value of the store
+   * @param value - Initial value of the store
    */
-  constructor(private _value: T) {}
-
-  private _start() {
-    this._cleanupFn = this.onUse() || noop;
+  constructor(value: T) {
+    this.#value = value;
   }
 
-  private _stop() {
-    const cleanupFn = this._cleanupFn;
+  #start() {
+    this.#cleanupFn = this.onUse() || noop;
+  }
+
+  #stop() {
+    const cleanupFn = this.#cleanupFn;
     if (cleanupFn) {
-      this._cleanupFn = null;
+      this.#cleanupFn = null;
       callUnsubscribe(cleanupFn);
     }
   }
 
   private [queueProcess](): void {
-    this._subscribersPaused = false;
-    const valueIndex = this._valueIndex;
-    const value = this._value;
+    this.#subscribersPaused = false;
+    const valueIndex = this.#valueIndex;
+    const value = this.#value;
     const notEqualCache = {
       [valueIndex]: false, // the subscriber already has the last value
       [valueIndex - 1]: true, // the subscriber had the previous value,
       // which is known to be different because notEqual is called in the set method
     };
-    for (const subscriber of [...this._subscribers]) {
+    for (const subscriber of [...this.#subscribers]) {
       if (subscriber._valueIndex === 0) {
         // ignore subscribers which were not yet called synchronously
         continue;
@@ -366,9 +369,9 @@ export abstract class Store<T> implements Readable<T> {
    *
    */
   protected pauseSubscribers(): void {
-    if (!this._subscribersPaused) {
-      this._subscribersPaused = true;
-      for (const subscriber of [...this._subscribers]) {
+    if (!this.#subscribersPaused) {
+      this.#subscribersPaused = true;
+      for (const subscriber of [...this.#subscribers]) {
         if (subscriber._valueIndex === 0) {
           // ignore subscribers which were not yet called synchronously
           continue;
@@ -387,7 +390,7 @@ export abstract class Store<T> implements Readable<T> {
    * Does nothing if the store was not in the paused state.
    */
   protected resumeSubscribers(): void {
-    if (this._subscribersPaused) {
+    if (this.#subscribersPaused) {
       batch(() => {
         queue.add(this as any);
       });
@@ -401,9 +404,9 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    if (this.notEqual(this._value, value)) {
-      this._valueIndex++;
-      this._value = value;
+    if (this.notEqual(this.#value, value)) {
+      this.#valueIndex++;
+      this.#value = value;
       this.pauseSubscribers();
     }
     this.resumeSubscribers();
@@ -416,7 +419,7 @@ export abstract class Store<T> implements Readable<T> {
    * @param updater - a function that takes the current state as an argument and returns the new state.
    */
   protected update(updater: Updater<T>): void {
-    this.set(updater(this._value));
+    this.set(updater(this.#value));
   }
 
   /**
@@ -451,24 +454,24 @@ export abstract class Store<T> implements Readable<T> {
    */
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
     const subscriberObject = toSubscriberObject(subscriber);
-    this._subscribers.add(subscriberObject);
-    if (this._subscribers.size == 1) {
-      this._start();
+    this.#subscribers.add(subscriberObject);
+    if (this.#subscribers.size == 1) {
+      this.#start();
     }
-    subscriberObject._valueIndex = this._valueIndex;
-    subscriberObject._value = this._value;
-    subscriberObject.next(this._value);
-    if (this._subscribersPaused) {
+    subscriberObject._valueIndex = this.#valueIndex;
+    subscriberObject._value = this.#value;
+    subscriberObject.next(this.#value);
+    if (this.#subscribersPaused) {
       subscriberObject.pause();
     }
 
     const unsubscribe = () => {
-      const removed = this._subscribers.delete(subscriberObject);
+      const removed = this.#subscribers.delete(subscriberObject);
       subscriberObject.next = noop;
       subscriberObject.pause = noop;
       subscriberObject.resume = noop;
-      if (removed && this._subscribers.size === 0) {
-        this._stop();
+      if (removed && this.#subscribers.size === 0) {
+        this.#stop();
       }
     };
     unsubscribe.unsubscribe = unsubscribe;
@@ -660,8 +663,11 @@ export abstract class DerivedStore<
   T,
   S extends SubscribableStores = SubscribableStores
 > extends Store<T> {
-  constructor(private _stores: S, initialValue: T) {
+  #stores: S;
+
+  constructor(stores: S, initialValue: T) {
     super(initialValue);
+    this.#stores = stores;
   }
 
   protected onUse(): Unsubscriber | void {
@@ -669,7 +675,7 @@ export abstract class DerivedStore<
     let pending = 0;
     let changed = 0;
 
-    const stores = this._stores;
+    const stores = this.#stores;
     const isArray = Array.isArray(stores);
     const storesArr = isArray
       ? (stores as readonly SubscribableStore<any>[])
