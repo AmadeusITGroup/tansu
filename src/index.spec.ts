@@ -1588,4 +1588,178 @@ describe('stores', () => {
       expect(calls).toEqual([0]);
     });
   });
+
+  describe('Listeners and batch timing', () => {
+    function getObservedDerived<T>(stores: any, fn: (value: any) => any, initialValue: T) {
+      const obj = {
+        calls: 0,
+        values: <T[]>[],
+        store: <any>undefined,
+        unsubscribe: () => {},
+      };
+
+      obj.store = derived(
+        stores,
+        (args) => {
+          obj.calls++;
+          return fn(args);
+        },
+        initialValue
+      );
+
+      obj.unsubscribe = obj.store.subscribe((value: any) => {
+        return obj.values.push(value);
+      });
+      return obj;
+    }
+
+    it(`don't call unnecessary listener`, () => {
+      const a = writable(0);
+      const b = getObservedDerived(a, (value) => value, 1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(1);
+      });
+
+      expect(b.values).toEqual([0, 1]);
+      expect(b.calls).toBe(2);
+
+      b.unsubscribe();
+    });
+
+    it(`don't call unnecessary related listeners`, () => {
+      const a = writable(0);
+      const b = getObservedDerived(a, (value) => value, 1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      const c = getObservedDerived(a, (value) => value, 1);
+      expect(c.values).toEqual([0]);
+      expect(c.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+
+        get(b.store);
+
+        expect(c.values).toEqual([0]);
+        expect(c.calls).toEqual(1);
+      });
+
+      expect(b.values).toEqual([0, 1]);
+      expect(b.calls).toBe(2);
+
+      expect(c.values).toEqual([0, 1]);
+      expect(c.calls).toEqual(2);
+
+      b.unsubscribe();
+      c.unsubscribe();
+    });
+
+    it(`called in batch if necessary`, () => {
+      const a = writable(0);
+      const b = getObservedDerived(a, (value) => value, 0);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+        expect(get(b.store)).withContext('get the latest value').toEqual(1);
+        expect(b.calls).toEqual(2);
+        expect(b.values).withContext('outside listener not called').toEqual([0]);
+      });
+
+      expect(b.values).toEqual([0, 1]);
+      expect(b.calls).toBe(2);
+
+      b.unsubscribe();
+    });
+
+    it(`back and forth of original value`, () => {
+      const a = writable(0);
+      const b = getObservedDerived(a, (value) => value, 0);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+        expect(get(b.store)).toEqual(1);
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(2);
+
+        a.set(0);
+      });
+
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(3);
+
+      b.unsubscribe();
+    });
+
+    it(`skip intermediate values`, () => {
+      const a = writable(0);
+      const b = getObservedDerived(a, (value) => value, 0);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+        expect(get(b.store)).toEqual(1);
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(2);
+
+        a.set(2);
+        expect(get(b.store)).toEqual(2);
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(3);
+      });
+
+      expect(b.values).toEqual([0, 2]);
+      expect(b.calls).toEqual(3);
+
+      b.unsubscribe();
+    });
+
+    it(`derived store dependency`, () => {
+      const a = writable(0);
+
+      const b = getObservedDerived(a, (value) => value, 0);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+
+      const c = getObservedDerived([a, b.store], ([valueA, valueB]) => valueA + valueB, 0);
+      expect(c.values).toEqual([0]);
+      expect(c.calls).toEqual(1);
+
+      batch(() => {
+        a.set(1);
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(1);
+
+        expect(c.values).toEqual([0]);
+        expect(c.calls).toEqual(1);
+
+        expect(get(c.store)).toEqual(2);
+
+        expect(b.values).toEqual([0]);
+        expect(b.calls).toEqual(2);
+
+        expect(c.values).toEqual([0]);
+        expect(c.calls).toEqual(2);
+      });
+
+      expect(b.values).toEqual([0, 1]);
+      expect(b.calls).toBe(2);
+
+      expect(c.values).toEqual([0, 2]);
+      expect(c.calls).toBe(2);
+
+      b.unsubscribe();
+      c.unsubscribe();
+    });
+  });
 });
