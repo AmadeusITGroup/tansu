@@ -8,10 +8,19 @@ import {
   readable,
   asReadable,
   batch,
+  StoreOptions,
+  Readable,
 } from './index';
 import { from } from 'rxjs';
 import { Component, Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+
+const switchMap = <T, U>(
+  store: SubscribableStore<T>,
+  fn: (value: T) => SubscribableStore<U>,
+  options?: Omit<StoreOptions<U>, 'onUse'>
+): Readable<U> =>
+  derived(store, { ...options, derive: (value, set) => fn(value).subscribe(set) }, undefined as U);
 
 describe('stores', () => {
   describe('base', () => {
@@ -1080,6 +1089,50 @@ describe('stores', () => {
       expect(calls).toEqual([0]);
       unsubscribe();
       innerUnsubscribe!();
+    });
+
+    it('should work with a basic switchMap', () => {
+      const a = writable(0);
+      const b = writable(1);
+      const c = writable(a);
+      const d = switchMap(c, (value) => value);
+      const values: number[] = [];
+      const unsubscribe = d.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      c.set(b);
+      expect(values).toEqual([0, 1]);
+      b.set(2);
+      expect(values).toEqual([0, 1, 2]);
+      a.set(3);
+      expect(values).toEqual([0, 1, 2]);
+      c.set(a);
+      expect(values).toEqual([0, 1, 2, 3]);
+      unsubscribe();
+      a.set(4);
+      expect(values).toEqual([0, 1, 2, 3]);
+    });
+
+    it('should work with switchMap and multiple levels of derived', () => {
+      const defConfig = { a: 1 };
+      const config = writable<Partial<typeof defConfig>>({});
+      const configA = derived(config, (config) => config?.a);
+      const aDef = derived(configA, (configA) => (configA === undefined ? defConfig.a : configA));
+      const aOwn = writable(undefined as number | undefined);
+      const aFinal = switchMap(aOwn, (value) => (value !== undefined ? readable(value) : aDef));
+      const a: number[] = [];
+      const unsubscribe = aFinal.subscribe((value) => a.push(value));
+      expect(a).toEqual([1]);
+      config.set({ a: 2 });
+      expect(a).toEqual([1, 2]);
+      config.set({});
+      expect(a).toEqual([1, 2, 1]);
+      aOwn.set(5);
+      expect(a).toEqual([1, 2, 1, 5]);
+      config.set({ a: 6 });
+      expect(a).toEqual([1, 2, 1, 5]);
+      aOwn.set(undefined);
+      expect(a).toEqual([1, 2, 1, 5, 6]);
+      unsubscribe();
     });
   });
 
