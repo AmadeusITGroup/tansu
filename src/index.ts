@@ -248,6 +248,13 @@ export function get<T>(store: SubscribableStore<T>): T {
   return value!;
 }
 
+const createNotEqualCache = (valueIndex: number): Record<number, boolean> => ({
+  [valueIndex]: false, // the subscriber already has the last value
+  [valueIndex - 1]: true, // the subscriber had the previous value,
+  // which is known to be different because notEqual is called in the set method
+  0: true, // the subscriber never received any value
+});
+
 /**
  * Base class that can be extended to easily create a custom {@link Readable} store.
  *
@@ -285,6 +292,7 @@ export abstract class Store<T> implements Readable<T> {
   #subscribersPaused = false;
   #valueIndex = 1;
   #value: T;
+  #notEqualCache = createNotEqualCache(1);
 
   /**
    *
@@ -308,31 +316,33 @@ export abstract class Store<T> implements Readable<T> {
 
   private [queueProcess](): void {
     this.#subscribersPaused = false;
-    const valueIndex = this.#valueIndex;
-    const value = this.#value;
-    const notEqualCache = {
-      [valueIndex]: false, // the subscriber already has the last value
-      [valueIndex - 1]: true, // the subscriber had the previous value,
-      // which is known to be different because notEqual is called in the set method
-    };
     for (const subscriber of [...this.#subscribers]) {
       if (subscriber._valueIndex === 0) {
         // ignore subscribers which were not yet called synchronously
         continue;
       }
-      let different = notEqualCache[subscriber._valueIndex];
-      if (different == null) {
-        different = this.notEqual(subscriber._value, value);
-        notEqualCache[subscriber._valueIndex] = different;
+      this.#notifySubscriber(subscriber);
+    }
+  }
+
+  #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
+    const notEqualCache = this.#notEqualCache;
+    const valueIndex = this.#valueIndex;
+    const value = this.#value;
+    let different = notEqualCache[subscriber._valueIndex];
+    if (different == null) {
+      different = this.notEqual(subscriber._value, value);
+      notEqualCache[subscriber._valueIndex] = different;
+    }
+    subscriber._valueIndex = valueIndex;
+    if (different) {
+      subscriber._value = value;
+      subscriber.next(value);
+      if (this.#subscribersPaused) {
+        subscriber.pause();
       }
-      if (different) {
-        subscriber._valueIndex = valueIndex;
-        subscriber._value = value;
-        subscriber.next(value);
-      } else {
-        subscriber._valueIndex = valueIndex;
-        subscriber.resume();
-      }
+    } else if (!this.#subscribersPaused) {
+      subscriber.resume();
     }
   }
 
@@ -405,8 +415,10 @@ export abstract class Store<T> implements Readable<T> {
    */
   protected set(value: T): void {
     if (this.notEqual(this.#value, value)) {
-      this.#valueIndex++;
+      const valueIndex = this.#valueIndex + 1;
+      this.#valueIndex = valueIndex;
       this.#value = value;
+      this.#notEqualCache = createNotEqualCache(valueIndex);
       this.pauseSubscribers();
     }
     this.resumeSubscribers();
@@ -458,12 +470,7 @@ export abstract class Store<T> implements Readable<T> {
     if (this.#subscribers.size == 1) {
       this.#start();
     }
-    subscriberObject._valueIndex = this.#valueIndex;
-    subscriberObject._value = this.#value;
-    subscriberObject.next(this.#value);
-    if (this.#subscribersPaused) {
-      subscriberObject.pause();
-    }
+    this.#notifySubscriber(subscriberObject);
 
     const unsubscribe = () => {
       const removed = this.#subscribers.delete(subscriberObject);
