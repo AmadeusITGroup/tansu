@@ -1226,7 +1226,7 @@ describe('stores', () => {
         a.set(0);
         expect(get(b)).toEqual(1);
         a.set(1);
-        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        expect(get(b)).toEqual(2);
         a.set(0);
         expect(get(b)).toEqual(1);
       });
@@ -1234,11 +1234,11 @@ describe('stores', () => {
       expect(get(b)).toEqual(1);
       batch(() => {
         a.set(1);
-        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        expect(get(b)).toEqual(2);
         a.set(0);
         expect(get(b)).toEqual(1);
         a.set(1);
-        expect(get(b)).toEqual(1); // batch prevents the current value from being computed
+        expect(get(b)).toEqual(2);
         expect(values).toEqual([1]);
       });
       expect(values).toEqual([1, 2]);
@@ -1258,20 +1258,20 @@ describe('stores', () => {
       batch(() => {
         a.set(0); // isEven = true
         expect(get(isEven)).toEqual(true);
-        a.set(1); // isEven = false (without batch)
-        expect(get(isEven)).toEqual(true); // batch prevents the current value from being computed
+        a.set(1); // isEven = false
+        expect(get(isEven)).toEqual(false);
         a.set(2); // isEven = true again
         expect(get(isEven)).toEqual(true);
       });
       expect(values).toEqual([true]);
       expect(get(isEven)).toEqual(true);
       batch(() => {
-        a.set(3); // isEven = false (without batch)
-        expect(get(isEven)).toEqual(true); // batch prevents the current value from being computed
+        a.set(3); // isEven = false
+        expect(get(isEven)).toEqual(false);
         a.set(4); // isEven = true
         expect(get(isEven)).toEqual(true);
         a.set(5); // isEven = false
-        expect(get(isEven)).toEqual(true);
+        expect(get(isEven)).toEqual(false);
         expect(values).toEqual([true]);
       });
       expect(values).toEqual([true, false]);
@@ -1324,11 +1324,11 @@ describe('stores', () => {
       batch(() => {
         a.set(1);
         unsubscribe = b.subscribe((v) => values.push(v));
-        expect(values).toEqual([-1]); // gets the initial value of store b to avoid temporary computation
+        expect(values).toEqual([2]);
       });
-      expect(values).toEqual([-1, 2]);
+      expect(values).toEqual([2]);
       a.set(2);
-      expect(values).toEqual([-1, 2, 3]);
+      expect(values).toEqual([2, 3]);
       unsubscribe();
     });
 
@@ -1344,13 +1344,13 @@ describe('stores', () => {
         a.set(1);
         unsubscribe2 = b.subscribe((v) => values2.push(v));
         expect(values1).toEqual([1]);
-        expect(values2).toEqual([1]); // gets the previous value of store b to avoid extra computation before the end of batch
+        expect(values2).toEqual([2]);
       });
       expect(values1).toEqual([1, 2]);
-      expect(values2).toEqual([1, 2]);
+      expect(values2).toEqual([2]);
       a.set(2);
       expect(values1).toEqual([1, 2, 3]);
-      expect(values2).toEqual([1, 2, 3]);
+      expect(values2).toEqual([2, 3]);
       unsubscribe1();
       unsubscribe2();
     });
@@ -1367,13 +1367,13 @@ describe('stores', () => {
         a.set(1);
         unsubscribe2 = b.subscribe((v) => values2.push(v));
         expect(values1).toEqual([0]);
-        expect(values2).toEqual([-1]); // gets the initial value of store b to avoid temporary computation
+        expect(values2).toEqual([2]);
       });
       expect(values1).toEqual([0, 1]);
-      expect(values2).toEqual([-1, 2]);
+      expect(values2).toEqual([2]);
       a.set(2);
       expect(values1).toEqual([0, 1, 2]);
-      expect(values2).toEqual([-1, 2, 3]);
+      expect(values2).toEqual([2, 3]);
       unsubscribe1();
       unsubscribe2();
     });
@@ -1391,17 +1391,17 @@ describe('stores', () => {
         a.set(1);
         b.set(1);
         unsubscribe2 = c.subscribe((v) => values2.push(v));
-        expect(values2).toEqual(['init']); // gets the initial value of store c to avoid a temporary computation
+        expect(values2).toEqual(['a1b1']);
         a.set(2);
         b.set(2);
         expect(values1).toEqual([0]);
-        expect(values2).toEqual(['init']);
+        expect(values2).toEqual(['a1b1']);
       });
       expect(values1).toEqual([0, 2]);
-      expect(values2).toEqual(['init', 'a2b2']);
+      expect(values2).toEqual(['a1b1', 'a2b2']);
       a.set(3);
       expect(values1).toEqual([0, 2, 3]);
-      expect(values2).toEqual(['init', 'a2b2', 'a3b2']);
+      expect(values2).toEqual(['a1b1', 'a2b2', 'a3b2']);
       unsubscribe1();
       unsubscribe2();
     });
