@@ -175,6 +175,7 @@ export function asReadable<T>(store: Readable<T>): Readable<T> {
   };
 }
 
+const triggerUpdate = Symbol();
 const queueProcess = Symbol();
 let willProcessQueue = false;
 const queue = new Set<{ [queueProcess](): void }>();
@@ -325,6 +326,10 @@ export abstract class Store<T> implements Readable<T> {
     }
   }
 
+  #triggerUpdate(): void {
+    (this.#cleanupFn as any)?.[triggerUpdate]?.();
+  }
+
   #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
     const notEqualCache = this.#notEqualCache;
     const valueIndex = this.#valueIndex;
@@ -469,6 +474,8 @@ export abstract class Store<T> implements Readable<T> {
     this.#subscribers.add(subscriberObject);
     if (this.#subscribers.size == 1) {
       this.#start();
+    } else {
+      this.#triggerUpdate();
     }
     this.#notifySubscriber(subscriberObject);
 
@@ -480,6 +487,10 @@ export abstract class Store<T> implements Readable<T> {
       if (removed && this.#subscribers.size === 0) {
         this.#stop();
       }
+    };
+    (unsubscribe as any)[triggerUpdate] = () => {
+      this.#triggerUpdate();
+      this.#notifySubscriber(subscriberObject);
     };
     unsubscribe.unsubscribe = unsubscribe;
     return unsubscribe;
@@ -699,8 +710,11 @@ export abstract class DerivedStore<
       }
     };
 
-    const callDerive = () => {
-      if (initDone && !pending) {
+    const callDerive = (forceCall = false) => {
+      if (forceCall) {
+        initDone = true;
+      }
+      if (initDone && (forceCall || !pending)) {
         if (changed) {
           changed = 0;
           callCleanup();
@@ -729,12 +743,19 @@ export abstract class DerivedStore<
       })
     );
 
-    initDone = true;
-    callDerive();
-    return () => {
+    callDerive(true);
+    const clean = () => {
       callCleanup();
       unsubscribers.forEach(callUnsubscribe);
     };
+    (clean as any)[triggerUpdate] = () => {
+      initDone = false;
+      for (const unsubscriber of unsubscribers) {
+        (unsubscriber as any)[triggerUpdate]?.();
+      }
+      callDerive(true);
+    };
+    return clean;
   }
 
   protected abstract derive(values: SubscribableStoresValues<S>): Unsubscriber | void;
