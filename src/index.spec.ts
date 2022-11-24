@@ -1587,6 +1587,30 @@ describe('stores', () => {
       });
       expect(calls).toEqual([0]);
     });
+
+    it('should be compatible with rxjs BehaviorSubject', () => {
+      const a = new BehaviorSubject(0);
+      const b = derived(a, (a: number) => a * 2);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      batch(() => {
+        a.next(1);
+        // note that because a is a non-tansu store, a.next(1)
+        // will immediately call the derived store which will immediately
+        // recompute its value (even inside a batch)
+        // however, b is a tansu store so it will not notify its listeners
+        // until the end of the batch
+        expect(values).toEqual([0]);
+        expect(get(b)).toEqual(2);
+        a.next(2);
+        a.next(3);
+      });
+      expect(values).toEqual([0, 6]);
+      unsubscribe();
+      a.next(4);
+      expect(values).toEqual([0, 6]);
+    });
   });
 
   describe('Listeners and batch timing', () => {
