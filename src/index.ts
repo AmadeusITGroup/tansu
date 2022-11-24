@@ -11,7 +11,10 @@ declare global {
   }
 }
 
-const symbolObservable: typeof Symbol.observable =
+/**
+ * Symbol used in {@link InteropObservable} allowing any object to expose an observable.
+ */
+export const symbolObservable: typeof Symbol.observable =
   (typeof Symbol === 'function' && Symbol.observable) || ('@@observable' as any);
 
 /**
@@ -93,10 +96,25 @@ export interface SubscribableStore<T> {
 }
 
 /**
+ * An interface for interoperability between observable implementations. It only has to expose the `[Symbol.observable]` method that is supposed to return a subscribable store.
+ */
+export interface InteropObservable<T> {
+  [Symbol.observable]: () => SubscribableStore<T>;
+}
+
+/**
+ * Valid types that can be considered as a store.
+ */
+export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
+
+const getStore = <T>(store: StoreInput<T>): SubscribableStore<T> =>
+  'subscribe' in store ? store : store[symbolObservable]();
+
+/**
  * This interface augments the base {@link SubscribableStore} interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method.
  * For {@link https://rxjs.dev/api/index/interface/InteropObservable | interoperability with rxjs}, it also implements the `[Symbol.observable]` method.
  */
-export interface Readable<T> extends SubscribableStore<T> {
+export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
   [Symbol.observable](): Readable<T>;
 }
@@ -253,9 +271,9 @@ export const batch = <T>(fn: () => T): T => {
  * console.log(get(myStore)); // logs 1
  * ```
  */
-export function get<T>(store: SubscribableStore<T>): T {
+export function get<T>(store: StoreInput<T>): T {
   let value: T;
-  callUnsubscribe(store.subscribe((v) => (value = v)));
+  callUnsubscribe(getStore(store).subscribe((v) => (value = v)));
   return value!;
 }
 
@@ -660,20 +678,18 @@ export function writable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}
   };
 }
 
-type SubscribableStores =
-  | SubscribableStore<any>
-  | readonly [SubscribableStore<any>, ...SubscribableStore<any>[]];
+type StoresInput = StoreInput<any> | readonly [StoreInput<any>, ...StoreInput<any>[]];
 
-type SubscribableStoresValues<S> = S extends SubscribableStore<infer T>
+type StoresInputValues<S> = S extends StoreInput<infer T>
   ? T
-  : { [K in keyof S]: S[K] extends SubscribableStore<infer T> ? T : never };
+  : { [K in keyof S]: S[K] extends StoreInput<infer T> ? T : never };
 
-type SyncDeriveFn<T, S> = (values: SubscribableStoresValues<S>) => T;
+type SyncDeriveFn<T, S> = (values: StoresInputValues<S>) => T;
 interface SyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
   derive: SyncDeriveFn<T, S>;
 }
 type AsyncDeriveFn<T, S> = (
-  values: SubscribableStoresValues<S>,
+  values: StoresInputValues<S>,
   set: OnUseArgument<T>
 ) => Unsubscriber | void;
 interface AsyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
@@ -687,10 +703,7 @@ function isSyncDeriveFn<T, S>(fn: DeriveFn<T, S>): fn is SyncDeriveFn<T, S> {
   return fn.length <= 1;
 }
 
-export abstract class DerivedStore<
-  T,
-  S extends SubscribableStores = SubscribableStores
-> extends Store<T> {
+export abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> {
   readonly #isArray: boolean;
   readonly #stores: SubscribableStore<any>[];
 
@@ -698,7 +711,7 @@ export abstract class DerivedStore<
     super(initialValue);
     const isArray = Array.isArray(stores);
     this.#isArray = isArray;
-    this.#stores = isArray ? [...stores] : [stores];
+    this.#stores = (isArray ? [...stores] : [stores]).map(getStore);
   }
 
   protected onUse(): Unsubscriber | void {
@@ -768,7 +781,7 @@ export abstract class DerivedStore<
     return clean;
   }
 
-  protected abstract derive(values: SubscribableStoresValues<S>): Unsubscriber | void;
+  protected abstract derive(values: StoresInputValues<S>): Unsubscriber | void;
 }
 
 /**
@@ -793,17 +806,17 @@ export abstract class DerivedStore<
  * x$.set(3); // will re-evaluate the `([x, y]) => x + y` function and log 6 as this is the new state of the derived store
  * ```
  */
-export function derived<T, S extends SubscribableStores>(
+export function derived<T, S extends StoresInput>(
   stores: S,
   options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>,
   initialValue: T
 ): Readable<T>;
-export function derived<T, S extends SubscribableStores>(
+export function derived<T, S extends StoresInput>(
   stores: S,
   options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>,
   initialValue?: T
 ): Readable<T>;
-export function derived<T, S extends SubscribableStores>(
+export function derived<T, S extends StoresInput>(
   stores: S,
   options: DeriveFn<T, S> | DeriveOptions<T, S>,
   initialValue?: T
@@ -814,12 +827,12 @@ export function derived<T, S extends SubscribableStores>(
   const { derive, ...opts } = options;
   const Derived = isSyncDeriveFn(derive)
     ? class extends DerivedStore<T, S> {
-        protected derive(values: SubscribableStoresValues<S>) {
+        protected derive(values: StoresInputValues<S>) {
           this.set(derive(values));
         }
       }
     : class extends DerivedStore<T, S> {
-        protected derive(values: SubscribableStoresValues<S>) {
+        protected derive(values: StoresInputValues<S>) {
           const setFn = (v: T) => this.set(v);
           setFn.set = setFn;
           setFn.update = (updater: Updater<T>) => this.update(updater);

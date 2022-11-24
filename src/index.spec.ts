@@ -10,6 +10,7 @@ import {
   batch,
   StoreOptions,
   Readable,
+  symbolObservable,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
 import { Component, Injectable } from '@angular/core';
@@ -342,9 +343,34 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('get should be compatible with rxjs (BehaviorSubject)', () => {
+      const store = new BehaviorSubject(0);
+      expect(get(store)).toBe(0);
+    });
+
+    it('get should be compatible with rxjs (InteropObservable)', () => {
+      const b = new BehaviorSubject(1);
+      const i = { [symbolObservable]: () => b };
+      expect(get(i)).toBe(1);
+    });
+
     it('should be compatible with rxjs "from" (writable)', () => {
       const store = writable(0);
       const observable = from(store);
+      const values: number[] = [];
+      const subscription = observable.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      store.set(1);
+      expect(values).toEqual([0, 1]);
+      subscription.unsubscribe();
+      store.set(2);
+      expect(values).toEqual([0, 1]);
+    });
+
+    it('should be compatible with rxjs "from" (InteropObservable)', () => {
+      const store = writable(0);
+      const interop = { [symbolObservable]: () => store };
+      const observable = from(interop);
       const values: number[] = [];
       const subscription = observable.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
@@ -881,6 +907,20 @@ describe('stores', () => {
     it('should be compatible with rxjs', () => {
       const a = new BehaviorSubject(0);
       const b = derived(a, (a) => a * 2);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      a.next(2);
+      expect(values).toEqual([0, 4]);
+      unsubscribe();
+      a.next(3);
+      expect(values).toEqual([0, 4]);
+    });
+
+    it('should be compatible with InteropObservable', () => {
+      const a = new BehaviorSubject(0);
+      const i = { [symbolObservable]: () => a };
+      const b = derived(i, (i) => i * 2);
       const values: number[] = [];
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
