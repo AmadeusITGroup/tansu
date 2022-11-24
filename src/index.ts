@@ -190,8 +190,18 @@ const callUnsubscribe = (unsubscribe: Unsubscriber) =>
  *
  * @remarks
  *
- * If a store is updated multiple times in the provided function, listeners
- * of that store will only be called once when the provided function returns.
+ * If a store is updated multiple times in the provided function, existing
+ * subscribers of that store will only be called once when the provided
+ * function returns.
+ *
+ * Note that even though the computation of derived stores is delayed in most
+ * cases, some computations of derived stores will still occur inside
+ * the function provided to batch if a new subscriber is added to a store, because
+ * calling {@link SubscribableStore.subscribe | subscribe} always triggers a
+ * synchronous call of the subscriber and because tansu always provides up-to-date
+ * values when calling subscribers. Especially, calling {@link get} on a store will
+ * always return the correct up-to-date value and can trigger derived store
+ * intermediate computations, even inside batch.
  *
  * It is possible to have nested calls of batch, in which case only the first
  * (outer) call has an effect, inner calls only call the provided function.
@@ -354,7 +364,7 @@ export abstract class Store<T> implements Readable<T> {
   /**
    * Compares two values and returns true if they are different.
    * It is called when setting a new value to avoid doing anything
-   * (such as notifying listeners) if the value did not change.
+   * (such as notifying subscribers) if the value did not change.
    * The default logic is to return true if `a` is a function or an object,
    * or if `a` and `b` are different according to `Object.is`.
    * This method can be overridden by subclasses to change the logic.
@@ -529,7 +539,7 @@ export interface StoreOptions<T> {
    * Custom function to compare two values, that should return true if they
    * are different.
    * It is called when setting a new value to avoid doing anything
-   * (such as notifying listeners) if the value did not change.
+   * (such as notifying subscribers) if the value did not change.
    * The default logic (when this option is not present) is to return true
    * if `a` is a function or an object, or if `a` and `b` are different
    * according to `Object.is`.
