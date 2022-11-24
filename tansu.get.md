@@ -9,14 +9,14 @@ A utility function to get the current value from a given store. It works by subs
 <b>Signature:</b>
 
 ```typescript
-export declare function get<T>(store: SubscribableStore<T>): T;
+export declare function get<T>(store: StoreInput<T>): T;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  store | [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt; | a store from which the current value is retrieved. |
+|  store | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; | a store from which the current value is retrieved. |
 
 <b>Returns:</b>
 

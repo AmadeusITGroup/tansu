@@ -7,7 +7,7 @@
 <b>Signature:</b>
 
 ```typescript
-export declare abstract class DerivedStore<T, S extends SubscribableStores = SubscribableStores> extends Store<T> 
+export declare abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> 
 ```
 <b>Extends:</b> [Store](./tansu.store.md)<!-- -->&lt;T&gt;
 
@@ -15,7 +15,7 @@ export declare abstract class DerivedStore<T, S extends SubscribableStores = Sub
 
 |  Constructor | Modifiers | Description |
 |  --- | --- | --- |
-|  [(constructor)(\_stores, initialValue)](./tansu.derivedstore._constructor_.md) |  | Constructs a new instance of the <code>DerivedStore</code> class |
+|  [(constructor)(stores, initialValue)](./tansu.derivedstore._constructor_.md) |  | Constructs a new instance of the <code>DerivedStore</code> class |
 
 ## Methods
 

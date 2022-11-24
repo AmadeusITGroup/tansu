@@ -9,9 +9,9 @@ This interface augments the base [SubscribableStore](./tansu.subscribablestore.m
 <b>Signature:</b>
 
 ```typescript
-export interface Readable<T> extends SubscribableStore<T> 
+export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> 
 ```
-<b>Extends:</b> [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt;
+<b>Extends:</b> [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt;, [InteropObservable](./tansu.interopobservable.md)<!-- -->&lt;T&gt;
 
 ## Methods
 

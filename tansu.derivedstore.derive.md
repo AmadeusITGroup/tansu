@@ -7,14 +7,14 @@
 <b>Signature:</b>
 
 ```typescript
-protected abstract derive(values: SubscribableStoresValues<S>): Unsubscriber | void;
+protected abstract derive(values: StoresInputValues<S>): Unsubscriber | void;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  values | SubscribableStoresValues&lt;S&gt; |  |
+|  values | StoresInputValues&lt;S&gt; |  |
 
 <b>Returns:</b>
 

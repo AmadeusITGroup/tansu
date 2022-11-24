@@ -9,7 +9,7 @@ A convenience function to create a new store with a state computed from the late
 <b>Signature:</b>
 
 ```typescript
-export declare function derived<T, S extends SubscribableStores>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
+export declare function derived<T, S extends StoresInput>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
 ```
 
 ## Parameters

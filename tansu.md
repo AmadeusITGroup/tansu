@@ -28,6 +28,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Interface | Description |
 |  --- | --- |
+|  [InteropObservable](./tansu.interopobservable.md) | An interface for interoperability between observable implementations. It only has to expose the <code>[Symbol.observable]</code> method that is supposed to return a subscribable store. |
 |  [OnUseArgument](./tansu.onuseargument.md) |  |
 |  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface by requiring the return value of the subscribe method to be both a function and an object with the <code>unsubscribe</code> method. For [interoperability with rxjs](https://rxjs.dev/api/index/interface/InteropObservable)<!-- -->, it also implements the <code>[Symbol.observable]</code> method. |
 |  [StoreOptions](./tansu.storeoptions.md) | Store options that can be passed to [readable()](./tansu.readable.md) or [writable()](./tansu.writable.md)<!-- -->. |
@@ -41,12 +42,14 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  Variable | Description |
 |  --- | --- |
 |  [batch](./tansu.batch.md) | Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. |
+|  [symbolObservable](./tansu.symbolobservable.md) | Symbol used in [InteropObservable](./tansu.interopobservable.md) allowing any object to expose an observable. |
 
 ## Type Aliases
 
 |  Type Alias | Description |
 |  --- | --- |
 |  [OnUseFn](./tansu.onusefn.md) | Type of a function that is called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If it returns a function, that function will be called when the number of subscribers changes from 1 to 0. |
+|  [StoreInput](./tansu.storeinput.md) | Valid types that can be considered as a store. |
 |  [Subscriber](./tansu.subscriber.md) | Expresses interest in store value changes over time. It can be either: - a callback function: [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->; - a partial observer: [SubscriberObject](./tansu.subscriberobject.md)<!-- -->. |
 |  [SubscriberFunction](./tansu.subscriberfunction.md) | A callback invoked when a store value changes. It is called with the latest value of a given store. |
 |  [UnsubscribeFunction](./tansu.unsubscribefunction.md) | A function to unsubscribe from value change notifications. |

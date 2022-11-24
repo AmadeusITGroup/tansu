@@ -9,13 +9,13 @@ Constructs a new instance of the `DerivedStore` class
 <b>Signature:</b>
 
 ```typescript
-constructor(_stores: S, initialValue: T);
+constructor(stores: S, initialValue: T);
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  \_stores | S |  |
+|  stores | S |  |
 |  initialValue | T |  |
 

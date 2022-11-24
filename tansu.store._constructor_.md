@@ -9,12 +9,12 @@ Constructs a new instance of the `Store` class
 <b>Signature:</b>
 
 ```typescript
-constructor(_value: T);
+constructor(value: T);
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  \_value | T | Initial value of the store |
+|  value | T | Initial value of the store |
 

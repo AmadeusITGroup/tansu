@@ -4,7 +4,7 @@
 
 ## Store.notEqual() method
 
-Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying listeners) if the value did not change. The default logic is to return true if `a` is a function or an object, or if `a` and `b` are different according to `Object.is`<!-- -->. This method can be overridden by subclasses to change the logic.
+Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic is to return true if `a` is a function or an object, or if `a` and `b` are different according to `Object.is`<!-- -->. This method can be overridden by subclasses to change the logic.
 
 <b>Signature:</b>
 

@@ -47,14 +47,14 @@ unsubscribe(); // stops notifications and corresponding logging
 
 |  Constructor | Modifiers | Description |
 |  --- | --- | --- |
-|  [(constructor)(\_value)](./tansu.store._constructor_.md) |  | Constructs a new instance of the <code>Store</code> class |
+|  [(constructor)(value)](./tansu.store._constructor_.md) |  | Constructs a new instance of the <code>Store</code> class |
 
 ## Methods
 
 |  Method | Modifiers | Description |
 |  --- | --- | --- |
 |  [\[symbolObservable\]()](./tansu.store._symbolobservable_.md) |  |  |
-|  [notEqual(a, b)](./tansu.store.notequal.md) | <code>protected</code> | Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying listeners) if the value did not change. The default logic is to return true if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. This method can be overridden by subclasses to change the logic. |
+|  [notEqual(a, b)](./tansu.store.notequal.md) | <code>protected</code> | Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic is to return true if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. This method can be overridden by subclasses to change the logic. |
 |  [onUse()](./tansu.store.onuse.md) | <code>protected</code> | Function called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If a function is returned, it will be called when the number of subscribers changes from 1 to 0. |
 |  [pauseSubscribers()](./tansu.store.pausesubscribers.md) | <code>protected</code> | Puts the store in the paused state, which means it will soon update its value. |
 |  [resumeSubscribers()](./tansu.store.resumesubscribers.md) | <code>protected</code> | Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->). |
