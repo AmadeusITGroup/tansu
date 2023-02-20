@@ -678,9 +678,22 @@ export function writable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}
   };
 }
 
-type StoresInput = StoreInput<any> | readonly [StoreInput<any>, ...StoreInput<any>[]];
+/**
+ * Either a single {@link StoreInput} or a read-only array of at least one {@link StoreInput}.
+ */
+export type StoresInput = StoreInput<any> | readonly [StoreInput<any>, ...StoreInput<any>[]];
 
-type StoresInputValues<S> = S extends StoreInput<infer T>
+/**
+ * Extracts the types of the values of the stores from a type extending {@link StoresInput}.
+ *
+ * @remarks
+ *
+ * If the type given as a parameter is a single {@link StoreInput}, the type of the value
+ * of that {@link StoreInput} is returned. If the type given as a parameter is one of an array
+ * of {@link StoreInput}, the returned type is the type of an array containing the value of each
+ * store in the same order.
+ */
+export type StoresInputValues<S> = S extends StoreInput<infer T>
   ? T
   : { [K in keyof S]: S[K] extends StoreInput<infer T> ? T : never };
 
