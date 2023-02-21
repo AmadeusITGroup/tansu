@@ -107,9 +107,6 @@ export interface InteropObservable<T> {
  */
 export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
 
-const getStore = <T>(store: StoreInput<T>): SubscribableStore<T> =>
-  'subscribe' in store ? store : store[symbolObservable]();
-
 /**
  * This interface augments the base {@link SubscribableStore} interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method.
  * For {@link https://rxjs.dev/api/index/interface/InteropObservable | interoperability with rxjs}, it also implements the `[Symbol.observable]` method.
@@ -153,6 +150,9 @@ export interface Writable<T, U = T> extends Readable<T> {
 
 const noop = () => {};
 
+const noopUnsubscribe = () => {};
+noopUnsubscribe.unsubscribe = noopUnsubscribe;
+
 const bind = <T>(object: T | null | undefined, fnName: keyof T) => {
   const fn = object ? object[fnName] : null;
   return typeof fn === 'function' ? fn.bind(object) : noop;
@@ -179,16 +179,32 @@ const returnThis = function <T>(this: T): T {
   return this;
 };
 
+const normalizeUnsubscribe = (
+  unsubscribe: Unsubscriber | void | null | undefined
+): UnsubscribeFunction & UnsubscribeObject => {
+  if (!unsubscribe) {
+    return noopUnsubscribe;
+  }
+  if ((unsubscribe as any).unsubscribe === unsubscribe) {
+    return unsubscribe as any;
+  }
+  const res: any =
+    typeof unsubscribe === 'function' ? () => unsubscribe() : () => unsubscribe.unsubscribe();
+  res.unsubscribe = res;
+  return res;
+};
+
 /**
  * Returns a wrapper (for the given store) which only exposes the {@link Readable} interface.
- * This allows to easily expose any store as read-only.
+ * This converts any {@link StoreInput} to a {@link Readable} and exposes the store as read-only.
  *
  * @param store - store to wrap
  * @returns A wrapper which only exposes the {@link Readable} interface.
  */
-export function asReadable<T>(store: Readable<T>): Readable<T> {
+export function asReadable<T>(input: StoreInput<T>): Readable<T> {
+  const store = 'subscribe' in input ? input : input[symbolObservable]();
   return {
-    subscribe: store.subscribe.bind(store),
+    subscribe: (...args: [Subscriber<T>]) => normalizeUnsubscribe(store.subscribe(...args)),
     [symbolObservable]: returnThis,
   };
 }
@@ -197,9 +213,6 @@ const triggerUpdate = Symbol();
 const queueProcess = Symbol();
 let willProcessQueue = false;
 const queue = new Set<{ [queueProcess](): void }>();
-
-const callUnsubscribe = (unsubscribe: Unsubscriber) =>
-  typeof unsubscribe === 'function' ? unsubscribe() : unsubscribe.unsubscribe();
 
 /**
  * Batches multiple changes to stores while calling the provided function,
@@ -273,7 +286,7 @@ export const batch = <T>(fn: () => T): T => {
  */
 export function get<T>(store: StoreInput<T>): T {
   let value: T;
-  callUnsubscribe(getStore(store).subscribe((v) => (value = v)));
+  asReadable(store).subscribe((v) => (value = v))();
   return value!;
 }
 
@@ -317,7 +330,7 @@ const createNotEqualCache = (valueIndex: number): Record<number, boolean> => ({
  */
 export abstract class Store<T> implements Readable<T> {
   #subscribers = new Set<PrivateSubscriberObject<T>>();
-  #cleanupFn: null | Unsubscriber = null;
+  #cleanupFn: null | UnsubscribeFunction = null;
   #subscribersPaused = false;
   #valueIndex = 1;
   #value: T;
@@ -332,14 +345,14 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   #start() {
-    this.#cleanupFn = this.onUse() || noop;
+    this.#cleanupFn = normalizeUnsubscribe(this.onUse());
   }
 
   #stop() {
     const cleanupFn = this.#cleanupFn;
     if (cleanupFn) {
       this.#cleanupFn = null;
-      callUnsubscribe(cleanupFn);
+      cleanupFn();
     }
   }
 
@@ -569,9 +582,6 @@ export interface StoreOptions<T> {
   notEqual?: (a: T, b: T) => boolean;
 }
 
-const noopUnsubscribe = () => {};
-noopUnsubscribe.unsubscribe = noopUnsubscribe;
-
 /**
  * A convenience function to create an optimized constant store (i.e. which never changes
  * its value). It does not keep track of its subscribers.
@@ -716,15 +726,17 @@ function isSyncDeriveFn<T, S>(fn: DeriveFn<T, S>): fn is SyncDeriveFn<T, S> {
   return fn.length <= 1;
 }
 
+const callFn = (fn: () => void) => fn();
+
 export abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> {
   readonly #isArray: boolean;
-  readonly #stores: SubscribableStore<any>[];
+  readonly #stores: Readable<any>[];
 
   constructor(stores: S, initialValue: T) {
     super(initialValue);
     const isArray = Array.isArray(stores);
     this.#isArray = isArray;
-    this.#stores = (isArray ? [...stores] : [stores]).map(getStore);
+    this.#stores = (isArray ? [...stores] : [stores]).map(asReadable);
   }
 
   protected onUse(): Unsubscriber | void {
@@ -736,13 +748,13 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     const storesArr = this.#stores;
     const dependantValues = new Array(storesArr.length);
 
-    let cleanupFn: null | Unsubscriber = null;
+    let cleanupFn: null | UnsubscribeFunction = null;
 
     const callCleanup = () => {
       const fn = cleanupFn;
       if (fn) {
         cleanupFn = null;
-        callUnsubscribe(fn);
+        fn();
       }
     };
 
@@ -754,7 +766,9 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
         if (changed) {
           changed = 0;
           callCleanup();
-          cleanupFn = this.derive(isArray ? dependantValues : dependantValues[0]) || noop;
+          cleanupFn = normalizeUnsubscribe(
+            this.derive(isArray ? dependantValues : dependantValues[0])
+          );
         }
         this.resumeSubscribers();
       }
@@ -782,7 +796,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     callDerive(true);
     const clean = () => {
       callCleanup();
-      unsubscribers.forEach(callUnsubscribe);
+      unsubscribers.forEach(callFn);
     };
     (clean as any)[triggerUpdate] = () => {
       initDone = false;
@@ -791,6 +805,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
       callDerive(true);
     };
+    clean.unsubscribe = clean;
     return clean;
   }
 

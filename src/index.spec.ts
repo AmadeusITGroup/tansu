@@ -343,9 +343,44 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('asReadable should be compatible with rxjs (BehaviorSubject)', () => {
+      const behaviorSubject = new BehaviorSubject(0);
+      const store = asReadable(behaviorSubject);
+      expect(store.subscribe).toBeDefined();
+      expect(store[symbolObservable]).toBeDefined();
+      const values: number[] = [];
+      const unsubscribe = store.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      expect(typeof unsubscribe).toBe('function');
+      expect(unsubscribe.unsubscribe).toBe(unsubscribe);
+      behaviorSubject.next(1);
+      expect(values).toEqual([0, 1]);
+      unsubscribe();
+      behaviorSubject.next(2);
+      expect(values).toEqual([0, 1]);
+    });
+
     it('get should be compatible with rxjs (BehaviorSubject)', () => {
       const store = new BehaviorSubject(0);
       expect(get(store)).toBe(0);
+    });
+
+    it('asReadable should be compatible with rxjs (InteropObservable)', () => {
+      const behaviorSubject = new BehaviorSubject(0);
+      const interop = { [symbolObservable]: () => behaviorSubject };
+      const store = asReadable(interop);
+      expect(store.subscribe).toBeDefined();
+      expect(store[symbolObservable]).toBeDefined();
+      const values: number[] = [];
+      const unsubscribe = store.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      expect(typeof unsubscribe).toBe('function');
+      expect(unsubscribe.unsubscribe).toBe(unsubscribe);
+      behaviorSubject.next(1);
+      expect(values).toEqual([0, 1]);
+      unsubscribe();
+      behaviorSubject.next(2);
+      expect(values).toEqual([0, 1]);
     });
 
     it('get should be compatible with rxjs (InteropObservable)', () => {
