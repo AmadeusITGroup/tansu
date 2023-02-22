@@ -383,6 +383,39 @@ describe('stores', () => {
       expect(values).toEqual([0, 1]);
     });
 
+    it('asReadable should not wrap its output subscribe function into a new wrapper when called again (BehaviorSubject)', () => {
+      const input = new BehaviorSubject(0);
+      const readable1 = asReadable(input);
+      const readable2 = asReadable(readable1);
+      expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
+    it('asReadable should not wrap its output subscribe function into a new wrapper when called again (InteropObservable)', () => {
+      const b = new BehaviorSubject(1);
+      const input = { [symbolObservable]: () => b };
+      const readable1 = asReadable(input);
+      const readable2 = asReadable(readable1);
+      expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
+    it('asReadable should not wrap the readable (const store) subscribe function into a new wrapper', () => {
+      const readable1 = readable(5);
+      const readable2 = asReadable(readable1);
+      expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
+    it('asReadable should not wrap the readable (with onUse) subscribe function into a new wrapper', () => {
+      const readable1 = readable(5, { onUse() {} });
+      const readable2 = asReadable(readable1);
+      expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
+    it('asReadable should not wrap the writable subscribe function into a new wrapper', () => {
+      const readable1 = writable(5);
+      const readable2 = asReadable(readable1);
+      expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
     it('get should be compatible with rxjs (InteropObservable)', () => {
       const b = new BehaviorSubject(1);
       const i = { [symbolObservable]: () => b };
