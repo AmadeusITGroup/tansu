@@ -6,12 +6,12 @@
 
 Builds on top of [Readable](./tansu.readable.md) and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export interface Writable<T, U = T> extends Readable<T> 
 ```
-<b>Extends:</b> [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
+**Extends:** [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 
 ## Example
 

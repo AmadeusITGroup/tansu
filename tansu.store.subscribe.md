@@ -6,7 +6,7 @@
 
 Default Implementation of the [SubscribableStore.subscribe()](./tansu.subscribablestore.subscribe.md)<!-- -->, not meant to be overridden.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
@@ -18,7 +18,7 @@ subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
 |  --- | --- | --- |
 |  subscriber | [Subscriber](./tansu.subscriber.md)<!-- -->&lt;T&gt; | see [SubscribableStore.subscribe()](./tansu.subscribablestore.subscribe.md) |
 
-<b>Returns:</b>
+**Returns:**
 
 [UnsubscribeFunction](./tansu.unsubscribefunction.md) &amp; [UnsubscribeObject](./tansu.unsubscribeobject.md)
 

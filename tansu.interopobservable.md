@@ -6,7 +6,7 @@
 
 An interface for interoperability between observable implementations. It only has to expose the `[Symbol.observable]` method that is supposed to return a subscribable store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export interface InteropObservable<T> 

@@ -6,7 +6,7 @@
 
 A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export declare function derived<T, S extends StoresInput>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
@@ -20,7 +20,7 @@ export declare function derived<T, S extends StoresInput>(stores: S, options: As
 |  options | AsyncDeriveFn&lt;T, S&gt; \| AsyncDeriveOptions&lt;T, S&gt; | either an object with store options including a derive function or directly the derive function itself. The derive function is used to compute a new state based on the latest values of dependent stores |
 |  initialValue | T |  |
 
-<b>Returns:</b>
+**Returns:**
 
 [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 

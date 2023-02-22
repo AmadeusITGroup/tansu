@@ -4,21 +4,21 @@
 
 ## asReadable() function
 
-Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This allows to easily expose any store as read-only.
+Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [Readable](./tansu.readable.md) and exposes the store as read-only.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare function asReadable<T>(store: Readable<T>): Readable<T>;
+export declare function asReadable<T>(input: StoreInput<T>): Readable<T>;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  store | [Readable](./tansu.readable.md)<!-- -->&lt;T&gt; | store to wrap |
+|  input | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; |  |
 
-<b>Returns:</b>
+**Returns:**
 
 [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 

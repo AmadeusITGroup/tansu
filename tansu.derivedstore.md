@@ -4,12 +4,12 @@
 
 ## DerivedStore class
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export declare abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> 
 ```
-<b>Extends:</b> [Store](./tansu.store.md)<!-- -->&lt;T&gt;
+**Extends:** [Store](./tansu.store.md)<!-- -->&lt;T&gt;
 
 ## Constructors
 
@@ -21,6 +21,6 @@ export declare abstract class DerivedStore<T, S extends StoresInput = StoresInpu
 
 |  Method | Modifiers | Description |
 |  --- | --- | --- |
-|  [derive(values)](./tansu.derivedstore.derive.md) | <code>protected</code> |  |
+|  [derive(values)](./tansu.derivedstore.derive.md) | <p><code>protected</code></p><p><code>abstract</code></p> |  |
 |  [onUse()](./tansu.derivedstore.onuse.md) | <code>protected</code> |  |
 

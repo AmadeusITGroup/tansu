@@ -4,12 +4,12 @@
 
 ## Readable.\[Symbol.observable\]() method
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 [Symbol.observable](): Readable<T>;
 ```
-<b>Returns:</b>
+**Returns:**
 
 [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 

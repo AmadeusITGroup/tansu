@@ -4,7 +4,7 @@
 
 ## DerivedStore.derive() method
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected abstract derive(values: StoresInputValues<S>): Unsubscriber | void;
@@ -14,9 +14,9 @@ protected abstract derive(values: StoresInputValues<S>): Unsubscriber | void;
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  values | StoresInputValues&lt;S&gt; |  |
+|  values | [StoresInputValues](./tansu.storesinputvalues.md)<!-- -->&lt;S&gt; |  |
 
-<b>Returns:</b>
+**Returns:**
 
 [Unsubscriber](./tansu.unsubscriber.md) \| void
 

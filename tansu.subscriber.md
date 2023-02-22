@@ -6,10 +6,10 @@
 
 Expresses interest in store value changes over time. It can be either: - a callback function: [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->; - a partial observer: [SubscriberObject](./tansu.subscriberobject.md)<!-- -->.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type Subscriber<T> = SubscriberFunction<T> | Partial<SubscriberObject<T>> | null | undefined;
+export type Subscriber<T> = SubscriberFunction<T> | Partial<SubscriberObject<T>> | null | undefined;
 ```
-<b>References:</b> [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->, [SubscriberObject](./tansu.subscriberobject.md)
+**References:** [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->, [SubscriberObject](./tansu.subscriberobject.md)
 

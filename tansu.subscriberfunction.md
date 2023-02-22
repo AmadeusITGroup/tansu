@@ -6,8 +6,8 @@
 
 A callback invoked when a store value changes. It is called with the latest value of a given store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type SubscriberFunction<T> = (value: T) => void;
+export type SubscriberFunction<T> = (value: T) => void;
 ```

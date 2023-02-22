@@ -4,7 +4,7 @@
 
 ## Readable.subscribe() method
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
@@ -16,7 +16,7 @@ subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
 |  --- | --- | --- |
 |  subscriber | [Subscriber](./tansu.subscriber.md)<!-- -->&lt;T&gt; |  |
 
-<b>Returns:</b>
+**Returns:**
 
 [UnsubscribeFunction](./tansu.unsubscribefunction.md) &amp; [UnsubscribeObject](./tansu.unsubscribeobject.md)
 

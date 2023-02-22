@@ -6,7 +6,7 @@
 
 A store will call this method every time the store's state is changing.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 next: SubscriberFunction<T>;

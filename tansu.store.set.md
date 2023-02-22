@@ -6,7 +6,7 @@
 
 Replaces store's state with the provided value. Equivalent of [Writable.set()](./tansu.writable.set.md)<!-- -->, but internal to the store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected set(value: T): void;
@@ -18,7 +18,7 @@ protected set(value: T): void;
 |  --- | --- | --- |
 |  value | T | value to be used as the new state of a store. |
 
-<b>Returns:</b>
+**Returns:**
 
 void
 

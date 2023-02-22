@@ -6,7 +6,7 @@
 
 An object with the `unsubscribe` method. Subscribable stores might choose to return such object instead of directly returning [UnsubscribeFunction](./tansu.unsubscribefunction.md) from a subscription call.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export interface UnsubscribeObject 

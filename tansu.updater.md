@@ -6,8 +6,8 @@
 
 A function that can be used to update store's value. This function is called with the current value and should return new store value.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type Updater<T, U = T> = (value: T) => U;
+export type Updater<T, U = T> = (value: T) => U;
 ```

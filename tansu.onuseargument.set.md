@@ -4,7 +4,7 @@
 
 ## OnUseArgument.set property
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 set: (value: T) => void;

@@ -6,9 +6,9 @@
 
 tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md)<!-- -->.
 
-## Classes
+## Abstract Classes
 
-|  Class | Description |
+|  Abstract Class | Description |
 |  --- | --- |
 |  [DerivedStore](./tansu.derivedstore.md) |  |
 |  [Store](./tansu.store.md) | Base class that can be extended to easily create a custom [Readable](./tansu.readable.md) store. |
@@ -17,7 +17,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Function | Description |
 |  --- | --- |
-|  [asReadable(store)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This allows to easily expose any store as read-only. |
+|  [asReadable(input)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [Readable](./tansu.readable.md) and exposes the store as read-only. |
 |  [derived(stores, options, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
 |  [derived(stores, options, initialValue)](./tansu.derived_1.md) |  |
 |  [get(store)](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |
@@ -50,6 +50,8 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  --- | --- |
 |  [OnUseFn](./tansu.onusefn.md) | Type of a function that is called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If it returns a function, that function will be called when the number of subscribers changes from 1 to 0. |
 |  [StoreInput](./tansu.storeinput.md) | Valid types that can be considered as a store. |
+|  [StoresInput](./tansu.storesinput.md) | Either a single [StoreInput](./tansu.storeinput.md) or a read-only array of at least one [StoreInput](./tansu.storeinput.md)<!-- -->. |
+|  [StoresInputValues](./tansu.storesinputvalues.md) | Extracts the types of the values of the stores from a type extending [StoresInput](./tansu.storesinput.md)<!-- -->. |
 |  [Subscriber](./tansu.subscriber.md) | Expresses interest in store value changes over time. It can be either: - a callback function: [SubscriberFunction](./tansu.subscriberfunction.md)<!-- -->; - a partial observer: [SubscriberObject](./tansu.subscriberobject.md)<!-- -->. |
 |  [SubscriberFunction](./tansu.subscriberfunction.md) | A callback invoked when a store value changes. It is called with the latest value of a given store. |
 |  [UnsubscribeFunction](./tansu.unsubscribefunction.md) | A function to unsubscribe from value change notifications. |

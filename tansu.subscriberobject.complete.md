@@ -6,7 +6,7 @@
 
 Unused, only declared for compatibility with rxjs.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 complete?: any;

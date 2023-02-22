@@ -6,7 +6,7 @@
 
 A method that makes it possible to register "interest" in store value changes over time. It is called each and every time the store's value changes. A registered subscriber is notified synchronously with the latest store value.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 subscribe(subscriber: Subscriber<T>): Unsubscriber;
@@ -18,7 +18,7 @@ subscribe(subscriber: Subscriber<T>): Unsubscriber;
 |  --- | --- | --- |
 |  subscriber | [Subscriber](./tansu.subscriber.md)<!-- -->&lt;T&gt; | a subscriber in a form of a [SubscriberFunction](./tansu.subscriberfunction.md) or a [SubscriberObject](./tansu.subscriberobject.md)<!-- -->. Returns a [Unsubscriber](./tansu.unsubscriber.md) (function or object with the <code>unsubscribe</code> method) that can be used to unregister and stop receiving notifications of store value changes. |
 
-<b>Returns:</b>
+**Returns:**
 
 [Unsubscriber](./tansu.unsubscriber.md)
 

@@ -4,7 +4,7 @@
 
 ## derived() function
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export declare function derived<T, S extends StoresInput>(stores: S, options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>, initialValue?: T): Readable<T>;
@@ -16,9 +16,9 @@ export declare function derived<T, S extends StoresInput>(stores: S, options: Sy
 |  --- | --- | --- |
 |  stores | S |  |
 |  options | SyncDeriveFn&lt;T, S&gt; \| SyncDeriveOptions&lt;T, S&gt; |  |
-|  initialValue | T | <i>(Optional)</i> |
+|  initialValue | T | _(Optional)_ |
 
-<b>Returns:</b>
+**Returns:**
 
 [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 

@@ -6,12 +6,12 @@
 
 Puts the store back to the normal state without changing its value, if it was in the paused state (cf [pauseSubscribers](./tansu.store.pausesubscribers.md)<!-- -->).
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected resumeSubscribers(): void;
 ```
-<b>Returns:</b>
+**Returns:**
 
 void
 

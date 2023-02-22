@@ -6,12 +6,12 @@
 
 Puts the store in the paused state, which means it will soon update its value.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected pauseSubscribers(): void;
 ```
-<b>Returns:</b>
+**Returns:**
 
 void
 

@@ -6,7 +6,7 @@
 
 A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export declare function get<T>(store: StoreInput<T>): T;
@@ -18,7 +18,7 @@ export declare function get<T>(store: StoreInput<T>): T;
 |  --- | --- | --- |
 |  store | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; | a store from which the current value is retrieved. |
 
-<b>Returns:</b>
+**Returns:**
 
 T
 

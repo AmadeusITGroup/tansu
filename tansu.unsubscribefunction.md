@@ -6,8 +6,8 @@
 
 A function to unsubscribe from value change notifications.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type UnsubscribeFunction = () => void;
+export type UnsubscribeFunction = () => void;
 ```

@@ -6,7 +6,7 @@
 
 Symbol used in [InteropObservable](./tansu.interopobservable.md) allowing any object to expose an observable.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 symbolObservable: typeof Symbol.observable

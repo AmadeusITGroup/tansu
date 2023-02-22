@@ -6,7 +6,7 @@
 
 Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic is to return true if `a` is a function or an object, or if `a` and `b` are different according to `Object.is`<!-- -->. This method can be overridden by subclasses to change the logic.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected notEqual(a: T, b: T): boolean;
@@ -19,7 +19,7 @@ protected notEqual(a: T, b: T): boolean;
 |  a | T | First value to compare. |
 |  b | T | Second value to compare. |
 
-<b>Returns:</b>
+**Returns:**
 
 boolean
 

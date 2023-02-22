@@ -6,7 +6,7 @@
 
 A store will call this method if [pause](./tansu.subscriberobject.pause.md) was called previously and the value finally did not need to change.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 resume: () => void;

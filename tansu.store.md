@@ -6,12 +6,12 @@
 
 Base class that can be extended to easily create a custom [Readable](./tansu.readable.md) store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export declare abstract class Store<T> implements Readable<T> 
 ```
-<b>Implements:</b> [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
+**Implements:** [Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
 
 ## Example
 

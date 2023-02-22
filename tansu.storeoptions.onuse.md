@@ -6,7 +6,7 @@
 
 A function that is called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If it returns a function, that function will be called when the number of subscribers changes from 1 to 0.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 onUse?: OnUseFn<T>;

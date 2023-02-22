@@ -6,7 +6,7 @@
 
 Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 batch: <T>(fn: () => T) => T

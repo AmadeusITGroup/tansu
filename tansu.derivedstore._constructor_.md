@@ -6,7 +6,7 @@
 
 Constructs a new instance of the `DerivedStore` class
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 constructor(stores: S, initialValue: T);

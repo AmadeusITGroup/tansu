@@ -6,10 +6,10 @@
 
 Valid types that can be considered as a store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
+export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
 ```
-<b>References:</b> [SubscribableStore](./tansu.subscribablestore.md)<!-- -->, [InteropObservable](./tansu.interopobservable.md)
+**References:** [SubscribableStore](./tansu.subscribablestore.md)<!-- -->, [InteropObservable](./tansu.interopobservable.md)
 

@@ -6,7 +6,7 @@
 
 A method that acts as the [UnsubscribeFunction](./tansu.unsubscribefunction.md)<!-- -->.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 unsubscribe: UnsubscribeFunction;

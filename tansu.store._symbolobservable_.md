@@ -4,12 +4,12 @@
 
 ## Store.\[symbolObservable\]() method
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 [symbolObservable](): this;
 ```
-<b>Returns:</b>
+**Returns:**
 
 this
 

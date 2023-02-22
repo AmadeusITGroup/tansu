@@ -6,12 +6,12 @@
 
 This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method. For [interoperability with rxjs](https://rxjs.dev/api/index/interface/InteropObservable)<!-- -->, it also implements the `[Symbol.observable]` method.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> 
 ```
-<b>Extends:</b> [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt;, [InteropObservable](./tansu.interopobservable.md)<!-- -->&lt;T&gt;
+**Extends:** [SubscribableStore](./tansu.subscribablestore.md)<!-- -->&lt;T&gt;, [InteropObservable](./tansu.interopobservable.md)<!-- -->&lt;T&gt;
 
 ## Methods
 

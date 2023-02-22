@@ -6,7 +6,7 @@
 
 Updates store's state by using an [Updater](./tansu.updater.md) function.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 update(updater: Updater<T, U>): void;
@@ -18,7 +18,7 @@ update(updater: Updater<T, U>): void;
 |  --- | --- | --- |
 |  updater | [Updater](./tansu.updater.md)<!-- -->&lt;T, U&gt; | a function that takes the current state as an argument and returns the new state. |
 
-<b>Returns:</b>
+**Returns:**
 
 void
 

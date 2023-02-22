@@ -4,7 +4,7 @@
 
 ## InteropObservable.\[Symbol.observable\] property
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 [Symbol.observable]: () => SubscribableStore<T>;

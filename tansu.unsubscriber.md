@@ -4,10 +4,10 @@
 
 ## Unsubscriber type
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
-export declare type Unsubscriber = UnsubscribeObject | UnsubscribeFunction;
+export type Unsubscriber = UnsubscribeObject | UnsubscribeFunction;
 ```
-<b>References:</b> [UnsubscribeObject](./tansu.unsubscribeobject.md)<!-- -->, [UnsubscribeFunction](./tansu.unsubscribefunction.md)
+**References:** [UnsubscribeObject](./tansu.unsubscribeobject.md)<!-- -->, [UnsubscribeFunction](./tansu.unsubscribefunction.md)
 

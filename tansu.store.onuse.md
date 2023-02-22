@@ -6,12 +6,12 @@
 
 Function called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected onUse(): Unsubscriber | void;
 ```
-<b>Returns:</b>
+**Returns:**
 
 [Unsubscriber](./tansu.unsubscriber.md) \| void
 

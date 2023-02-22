@@ -6,7 +6,7 @@
 
 Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 export interface SubscribableStore<T> 

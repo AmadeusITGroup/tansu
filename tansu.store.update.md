@@ -6,7 +6,7 @@
 
 Updates store's state by using an [Updater](./tansu.updater.md) function. Equivalent of [Writable.update()](./tansu.writable.update.md)<!-- -->, but internal to the store.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected update(updater: Updater<T>): void;
@@ -18,7 +18,7 @@ protected update(updater: Updater<T>): void;
 |  --- | --- | --- |
 |  updater | [Updater](./tansu.updater.md)<!-- -->&lt;T&gt; | a function that takes the current state as an argument and returns the new state. |
 
-<b>Returns:</b>
+**Returns:**
 
 void
 

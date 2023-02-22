@@ -4,7 +4,7 @@
 
 ## OnUseArgument.update property
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 update: (updater: Updater<T>) => void;

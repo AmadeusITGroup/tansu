@@ -4,12 +4,12 @@
 
 ## DerivedStore.onUse() method
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 protected onUse(): Unsubscriber | void;
 ```
-<b>Returns:</b>
+**Returns:**
 
 [Unsubscriber](./tansu.unsubscriber.md) \| void
 

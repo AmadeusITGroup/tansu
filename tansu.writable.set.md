@@ -6,7 +6,7 @@
 
 Replaces store's state with the provided value.
 
-<b>Signature:</b>
+**Signature:**
 
 ```typescript
 set(value: U): void;
@@ -18,7 +18,7 @@ set(value: U): void;
 |  --- | --- | --- |
 |  value | U | value to be used as the new state of a store. |
 
-<b>Returns:</b>
+**Returns:**
 
 void
 
