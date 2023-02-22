@@ -194,6 +194,16 @@ const normalizeUnsubscribe = (
   return res;
 };
 
+const normalizedSubscribe = new WeakSet<Readable<any>['subscribe']>();
+const normalizeSubscribe = <T>(store: SubscribableStore<T>): Readable<T>['subscribe'] => {
+  let res: Readable<T>['subscribe'] = store.subscribe as any;
+  if (!normalizedSubscribe.has(res)) {
+    res = (...args: [Subscriber<T>]) => normalizeUnsubscribe(store.subscribe(...args));
+    normalizedSubscribe.add(res);
+  }
+  return res;
+};
+
 /**
  * Returns a wrapper (for the given store) which only exposes the {@link Readable} interface.
  * This converts any {@link StoreInput} to a {@link Readable} and exposes the store as read-only.
@@ -204,7 +214,7 @@ const normalizeUnsubscribe = (
 export function asReadable<T>(input: StoreInput<T>): Readable<T> {
   const store = 'subscribe' in input ? input : input[symbolObservable]();
   return {
-    subscribe: (...args: [Subscriber<T>]) => normalizeUnsubscribe(store.subscribe(...args)),
+    subscribe: normalizeSubscribe(store),
     [symbolObservable]: returnThis,
   };
 }
@@ -588,11 +598,13 @@ export interface StoreOptions<T> {
  * @param value - value of the store, which will never change
  */
 function constStore<T>(value: T): Readable<T> {
+  const subscribe = (subscriber: Subscriber<T>) => {
+    toSubscriberObject(subscriber).next(value);
+    return noopUnsubscribe;
+  };
+  normalizedSubscribe.add(subscribe);
   return {
-    subscribe(subscriber: Subscriber<T>) {
-      toSubscriberObject(subscriber).next(value);
-      return noopUnsubscribe;
-    },
+    subscribe,
     [symbolObservable]: returnThis,
   };
 }
