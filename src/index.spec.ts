@@ -1068,6 +1068,86 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('should stop notifying following listeners if the value changed in a listener', () => {
+      const store = writable(0);
+      const identicalStore = derived(store, (value) => value);
+      const values1: number[] = [];
+      const unsubscribeEven = identicalStore.subscribe((value) => {
+        values1.push(value);
+        if (value % 2 === 1) {
+          store.set(value + 1);
+        }
+      });
+      expect(values1).toEqual([0]);
+      const values2: number[] = [];
+      const unsubscribe = identicalStore.subscribe((value) => values2.push(value));
+      expect(values2).toEqual([0]);
+      store.set(1);
+      expect(values1).toEqual([0, 1, 2]);
+      expect(values2).toEqual([0, 2]);
+      unsubscribeEven();
+      unsubscribe();
+    });
+
+    it('should not have glitches when setting the value of a store inside derived', () => {
+      const events: string[] = [];
+      const currentlyVisible$ = writable(true);
+      const visible$ = writable(true);
+      const transitioning$ = writable(false);
+      const hidden$ = derived(
+        [visible$, transitioning$],
+        ([visible, transitioning]) => !visible && !transitioning
+      );
+      const state$ = derived(
+        [visible$, transitioning$, hidden$],
+        ([visible, transitioning, hidden]) => {
+          if (hidden !== (!visible && !transitioning)) {
+            // inconsistent state!!
+            events.push('!!! ERROR: Inconsistent state detected !!!');
+          }
+          return `visible=${visible},transitioning=${transitioning},hidden=${hidden}`;
+        }
+      );
+      const visibleChange = derived(
+        [currentlyVisible$, visible$],
+        ([currentlyVisible, visible]) => {
+          if (currentlyVisible !== visible) {
+            batch(() => {
+              transitioning$.set(true);
+              currentlyVisible$.set(visible);
+            });
+          }
+        }
+      );
+      const unsubscribeState = state$.subscribe((state) => {
+        events.push(`state:${state}`);
+      });
+      const unsubscribeVisibleChange = visibleChange.subscribe(() => {});
+      events.push('1:set visible=false');
+      visible$.set(false);
+      events.push('2:set transitioning=false');
+      transitioning$.set(false);
+      events.push('3:set visible=true');
+      visible$.set(true);
+      events.push('4:set transitioning=false');
+      transitioning$.set(false);
+      events.push('5:finished');
+      unsubscribeVisibleChange();
+      unsubscribeState();
+      expect(events).toEqual([
+        'state:visible=true,transitioning=false,hidden=false',
+        '1:set visible=false',
+        'state:visible=false,transitioning=true,hidden=false',
+        '2:set transitioning=false',
+        'state:visible=false,transitioning=false,hidden=true',
+        '3:set visible=true',
+        'state:visible=true,transitioning=true,hidden=false',
+        '4:set transitioning=false',
+        'state:visible=true,transitioning=false,hidden=false',
+        '5:finished',
+      ]);
+    });
+
     it('should be able to use destructuring', () => {
       const store = writable(0);
       const derivedStore = derived(store, (value) => {
