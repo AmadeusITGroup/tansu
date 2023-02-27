@@ -53,6 +53,7 @@ export interface SubscriberObject<T> {
 interface PrivateSubscriberObject<T> extends SubscriberObject<T> {
   _value: T;
   _valueIndex: number;
+  _paused: boolean;
 }
 
 /**
@@ -166,6 +167,7 @@ const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObje
         resume: noop,
         _value: undefined as any,
         _valueIndex: 0,
+        _paused: false,
       }
     : {
         next: bind(subscriber, 'next'),
@@ -173,6 +175,7 @@ const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObje
         resume: bind(subscriber, 'resume'),
         _value: undefined as any,
         _valueIndex: 0,
+        _paused: false,
       };
 
 const returnThis = function <T>(this: T): T {
@@ -367,8 +370,12 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   private [queueProcess](): void {
-    this.#subscribersPaused = false;
     for (const subscriber of [...this.#subscribers]) {
+      if (this.#subscribersPaused) {
+        // the value of the store can change while notifying subscribers
+        // in that case, let's just stop notifying subscribers
+        return;
+      }
       if (subscriber._valueIndex === 0) {
         // ignore subscribers which were not yet called synchronously
         continue;
@@ -393,11 +400,10 @@ export abstract class Store<T> implements Readable<T> {
     subscriber._valueIndex = valueIndex;
     if (different) {
       subscriber._value = value;
+      subscriber._paused = false;
       subscriber.next(value);
-      if (this.#subscribersPaused) {
-        subscriber.pause();
-      }
-    } else if (!this.#subscribersPaused) {
+    } else if (!this.#subscribersPaused && subscriber._paused) {
+      subscriber._paused = false;
       subscriber.resume();
     }
   }
@@ -437,11 +443,13 @@ export abstract class Store<T> implements Readable<T> {
   protected pauseSubscribers(): void {
     if (!this.#subscribersPaused) {
       this.#subscribersPaused = true;
+      queue.delete(this as any);
       for (const subscriber of [...this.#subscribers]) {
-        if (subscriber._valueIndex === 0) {
-          // ignore subscribers which were not yet called synchronously
+        if (subscriber._valueIndex === 0 || subscriber._paused) {
+          // ignore subscribers which were not yet called synchronously or are already paused
           continue;
         }
+        subscriber._paused = true;
         subscriber.pause();
       }
     }
@@ -457,6 +465,7 @@ export abstract class Store<T> implements Readable<T> {
    */
   protected resumeSubscribers(): void {
     if (this.#subscribersPaused) {
+      this.#subscribersPaused = false;
       batch(() => {
         queue.add(this as any);
       });
