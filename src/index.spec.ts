@@ -539,6 +539,20 @@ describe('stores', () => {
       expect(get(one)).toBe(1);
     });
 
+    it('should work to subscribe without a listener', () => {
+      let used = 0;
+      const a = readable(0, () => {
+        used++;
+        return () => {
+          used--;
+        };
+      });
+      const unsubscribe = a.subscribe(null);
+      expect(used).toBe(1);
+      unsubscribe();
+      expect(used).toBe(0);
+    });
+
     it('should accept a function with a value setter in the readable store shorthand', () => {
       let tick!: (val: number) => void;
       const ticker = readable(0, (set) => {
@@ -1213,6 +1227,31 @@ describe('stores', () => {
       const b = writable(2);
       const sum = derived([a, b], ([a, b]) => a + b);
       expect(get(sum)).toBe(3);
+    });
+
+    it('should work to call update in the async case', () => {
+      const a = writable(0);
+      const history = derived(
+        a,
+        (a, set) => {
+          set.update((values) => {
+            if (values[values.length - 1] !== a) {
+              return [...values, a];
+            }
+            return values;
+          });
+        },
+        [] as number[]
+      );
+      const historyValues: number[][] = [];
+      const unsubscribe = history.subscribe((value) => historyValues.push(value));
+      expect(historyValues).toEqual([[0]]);
+      a.set(1);
+      expect(historyValues).toEqual([[0], [0, 1]]);
+      unsubscribe();
+      expect(get(history)).toEqual([0, 1]);
+      a.set(10);
+      expect(get(history)).toEqual([0, 1, 10]);
     });
 
     it('should call clean-up function returned in deriveFn with derived', () => {
