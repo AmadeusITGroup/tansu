@@ -17,6 +17,8 @@ declare global {
 export const symbolObservable: typeof Symbol.observable =
   (typeof Symbol === 'function' && Symbol.observable) || ('@@observable' as any);
 
+const oldSubscription = Symbol();
+
 /**
  * A callback invoked when a store value changes. It is called with the latest value of a given store.
  */
@@ -49,9 +51,16 @@ export interface SubscriberObject<T> {
    * and the value finally did not need to change.
    */
   resume: () => void;
+  /**
+   * @internal
+   * Value returned from a previous call to subscribe, and corresponding to a subscription to resume.
+   * This subscription must no longer be active. The new subscriber will not be called synchronously if
+   * the value did not change compared to the last value received in this old subscription.
+   */
+  [oldSubscription]?: Unsubscriber;
 }
 
-interface PrivateSubscriberObject<T> extends SubscriberObject<T> {
+interface PrivateSubscriberObject<T> extends Omit<SubscriberObject<T>, 'oldSubscription'> {
   _value: T;
   _valueIndex: number;
   _paused: boolean;
@@ -119,6 +128,16 @@ export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> 
 }
 
 /**
+ * This interface augments the base {@link Readable} interface by adding the ability to call the store as a function to get its value.
+ */
+export interface ReadableSignal<T> extends Readable<T> {
+  /**
+   * Returns the value of the store. This is a shortcut for calling {@link get} with the store.
+   */
+  (): T;
+}
+
+/**
  * A function that can be used to update store's value. This function is called with the current value and should return new store value.
  */
 export type Updater<T, U = T> = (value: T) => U;
@@ -149,6 +168,12 @@ export interface Writable<T, U = T> extends Readable<T> {
    */
   update(updater: Updater<T, U>): void;
 }
+
+/**
+ * Represents a store that implements both {@link ReadableSignal} and {@link Writable}.
+ * This is the type of objects returned by {@link writable}.
+ */
+export interface WritableSignal<T, U = T> extends ReadableSignal<T>, Writable<T, U> {}
 
 const noop = () => {};
 
@@ -198,19 +223,35 @@ const normalizeSubscribe = <T>(store: SubscribableStore<T>): Readable<T>['subscr
   return res;
 };
 
+const getNormalizedSubscribe = <T>(input: StoreInput<T>) => {
+  const store = 'subscribe' in input ? input : input[symbolObservable]();
+  return normalizeSubscribe(store);
+};
+
+const getValue = <T>(subscribe: Readable<T>['subscribe']): T => {
+  let value: T;
+  subscribe((v) => (value = v))();
+  return value!;
+};
+
 /**
- * Returns a wrapper (for the given store) which only exposes the {@link Readable} interface.
- * This converts any {@link StoreInput} to a {@link Readable} and exposes the store as read-only.
+ * Returns a wrapper (for the given store) which only exposes the {@link ReadableSignal} interface.
+ * This converts any {@link StoreInput} to a {@link ReadableSignal} and exposes the store as read-only.
  *
  * @param store - store to wrap
- * @returns A wrapper which only exposes the {@link Readable} interface.
+ * @param extraProp - extra properties to add on the returned object
+ * @returns A wrapper which only exposes the {@link ReadableSignal} interface.
  */
-export function asReadable<T>(input: StoreInput<T>): Readable<T> {
-  const store = 'subscribe' in input ? input : input[symbolObservable]();
-  return {
-    subscribe: normalizeSubscribe(store),
+export function asReadable<T, U = object>(
+  store: StoreInput<T>,
+  extraProp?: U
+): ReadableSignal<T> & U {
+  const subscribe = getNormalizedSubscribe(store);
+  const res = Object.assign(() => get(res), extraProp, {
+    subscribe,
     [symbolObservable]: returnThis,
-  };
+  });
+  return res;
 }
 
 const triggerUpdate = Symbol();
@@ -291,6 +332,9 @@ export const batch = <T>(fn: () => T): T => {
   }
 };
 
+const defaultReactiveContext = <T>(store: StoreInput<T>) => getValue(getNormalizedSubscribe(store));
+let reactiveContext = defaultReactiveContext;
+
 /**
  * A utility function to get the current value from a given store.
  * It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after.
@@ -303,11 +347,7 @@ export const batch = <T>(fn: () => T): T => {
  * console.log(get(myStore)); // logs 1
  * ```
  */
-export function get<T>(store: StoreInput<T>): T {
-  let value: T;
-  asReadable(store).subscribe((v) => (value = v))();
-  return value!;
-}
+export const get = <T>(store: StoreInput<T>): T => reactiveContext(store);
 
 const createNotEqualCache = (valueIndex: number): Record<number, boolean> => ({
   [valueIndex]: false, // the subscriber already has the last value
@@ -354,6 +394,7 @@ export abstract class Store<T> implements Readable<T> {
   #valueIndex = 1;
   #value: T;
   #notEqualCache = createNotEqualCache(1);
+  #oldSubscriptions = new WeakMap<Unsubscriber, PrivateSubscriberObject<T>>();
 
   /**
    *
@@ -393,9 +434,8 @@ export abstract class Store<T> implements Readable<T> {
     }
   }
 
-  #triggerUpdate(): void {
-    (this.#cleanupFn as any)?.[triggerUpdate]?.();
-  }
+  /** @internal */
+  protected [triggerUpdate](): void {}
 
   #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
     const notEqualCache = this.#notEqualCache;
@@ -438,7 +478,7 @@ export abstract class Store<T> implements Readable<T> {
    *
    * @remarks
    *
-   * The paused state prevents derived stores (both direct and transitive) from recomputing their value
+   * The paused state prevents derived or computed stores (both direct and transitive) from recomputing their value
    * using the current value of this store.
    *
    * There are two ways to put a store back into its normal state: calling {@link Store.set | set} to set a new
@@ -540,12 +580,20 @@ export abstract class Store<T> implements Readable<T> {
    */
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
     const subscriberObject = toSubscriberObject(subscriber);
+    const oldSubscriptionParam = subscriber?.[oldSubscription];
+    if (oldSubscriptionParam) {
+      const oldSubscriberObject = this.#oldSubscriptions.get(oldSubscriptionParam);
+      if (oldSubscriberObject) {
+        subscriberObject._value = oldSubscriberObject._value;
+        subscriberObject._valueIndex = oldSubscriberObject._valueIndex;
+      }
+    }
     this.#subscribers.add(subscriberObject);
     batch(() => {
       if (this.#subscribers.size == 1) {
         this.#start();
       } else {
-        this.#triggerUpdate();
+        this[triggerUpdate]();
       }
     });
     this.#notifySubscriber(subscriberObject);
@@ -555,12 +603,15 @@ export abstract class Store<T> implements Readable<T> {
       subscriberObject.next = noop;
       subscriberObject.pause = noop;
       subscriberObject.resume = noop;
-      if (removed && this.#subscribers.size === 0) {
-        this.#stop();
+      if (removed) {
+        this.#oldSubscriptions.set(unsubscribe, subscriberObject);
+        if (this.#subscribers.size === 0) {
+          this.#stop();
+        }
       }
     };
     (unsubscribe as any)[triggerUpdate] = () => {
-      this.#triggerUpdate();
+      this[triggerUpdate]();
       this.#notifySubscriber(subscriberObject);
     };
     unsubscribe.unsubscribe = unsubscribe;
@@ -617,16 +668,15 @@ export interface StoreOptions<T> {
  * its value). It does not keep track of its subscribers.
  * @param value - value of the store, which will never change
  */
-function constStore<T>(value: T): Readable<T> {
+function constStore<T>(value: T): ReadableSignal<T> {
   const subscribe = (subscriber: Subscriber<T>) => {
-    toSubscriberObject(subscriber).next(value);
+    if (!subscriber?.[oldSubscription]) {
+      toSubscriberObject(subscriber).next(value);
+    }
     return noopUnsubscribe;
   };
   normalizedSubscribe.add(subscribe);
-  return {
-    subscribe,
-    [symbolObservable]: returnThis,
-  };
+  return Object.assign(() => value, { subscribe, [symbolObservable]: returnThis });
 }
 
 class WritableStore<T> extends Store<T> implements Writable<T> {
@@ -681,7 +731,10 @@ const applyStoreOptions = <T, S extends Store<T>>(store: S, options: StoreOption
  * });
  * ```
  */
-export function readable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}): Readable<T> {
+export function readable<T>(
+  value: T,
+  options: StoreOptions<T> | OnUseFn<T> = {}
+): ReadableSignal<T> {
   if (typeof options === 'function') {
     options = { onUse: options };
   }
@@ -708,16 +761,18 @@ export function readable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}
  * x.set(0); // reset back to the default value
  * ```
  */
-export function writable<T>(value: T, options: StoreOptions<T> | OnUseFn<T> = {}): Writable<T> {
+export function writable<T>(
+  value: T,
+  options: StoreOptions<T> | OnUseFn<T> = {}
+): WritableSignal<T> {
   if (typeof options === 'function') {
     options = { onUse: options };
   }
   const store = applyStoreOptions(new WritableStore(value), options);
-  return {
-    ...asReadable(store),
+  return asReadable<T, Pick<Writable<T>, 'set' | 'update'>>(store, {
     set: store.set.bind(store),
     update: store.update.bind(store),
-  };
+  });
 }
 
 /**
@@ -762,14 +817,14 @@ const callFn = (fn: () => void) => fn();
 
 export abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> {
   readonly #isArray: boolean;
-  readonly #stores: Readable<any>[];
+  readonly #storesSubscribeFn: Readable<any>['subscribe'][];
   #pending = 0;
 
   constructor(stores: S, initialValue: T) {
     super(initialValue);
     const isArray = Array.isArray(stores);
     this.#isArray = isArray;
-    this.#stores = (isArray ? [...stores] : [stores]).map(asReadable);
+    this.#storesSubscribeFn = (isArray ? [...stores] : [stores]).map(getNormalizedSubscribe);
   }
 
   protected override resumeSubscribers(): void {
@@ -785,8 +840,8 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     let changed = 0;
 
     const isArray = this.#isArray;
-    const storesArr = this.#stores;
-    const dependantValues = new Array(storesArr.length);
+    const storesSubscribeFn = this.#storesSubscribeFn;
+    const dependantValues = new Array(storesSubscribeFn.length);
 
     let cleanupFn: null | UnsubscribeFunction = null;
 
@@ -814,7 +869,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
     };
 
-    const unsubscribers = storesArr.map((store, idx) => {
+    const unsubscribers = storesSubscribeFn.map((subscribe, idx) => {
       const subscriber = (v: any) => {
         dependantValues[idx] = v;
         changed |= 1 << idx;
@@ -830,19 +885,15 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
         this.#pending &= ~(1 << idx);
         callDerive();
       };
-      return store.subscribe(subscriber);
+      return subscribe(subscriber);
     });
 
-    const clean = () => {
-      callCleanup();
-      unsubscribers.forEach(callFn);
-    };
     const triggerSubscriberPendingUpdate = (unsubscriber: any, idx: number) => {
       if (this.#pending & (1 << idx)) {
         unsubscriber[triggerUpdate]?.();
       }
     };
-    (clean as any)[triggerUpdate] = () => {
+    this[triggerUpdate] = () => {
       let iterations = 0;
       while (this.#pending) {
         checkIterations(++iterations);
@@ -856,10 +907,13 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
         callDerive(true);
       }
     };
-    clean.unsubscribe = clean;
     callDerive(true);
-    (clean as any)[triggerUpdate]();
-    return clean;
+    this[triggerUpdate]();
+    return () => {
+      this[triggerUpdate] = noop;
+      callCleanup();
+      unsubscribers.forEach(callFn);
+    };
   }
 
   protected abstract derive(values: StoresInputValues<S>): Unsubscriber | void;
@@ -924,6 +978,231 @@ export function derived<T, S extends StoresInput>(
     applyStoreOptions(new Derived(stores, initialValue as any), {
       ...opts,
       onUse: undefined /* setting onUse is not allowed from derived */,
+    })
+  );
+}
+
+/**
+ * Stops the tracking of dependencies made by {@link computed} and calls the provided function.
+ * After the function returns, the tracking of dependencies continues as before.
+ *
+ * @param fn - function to be called
+ * @returns the value returned by the given function
+ */
+export const untrack = <T>(fn: () => T): T => {
+  const previousReactiveContext = reactiveContext;
+  try {
+    reactiveContext = defaultReactiveContext;
+    return fn();
+  } finally {
+    reactiveContext = previousReactiveContext;
+  }
+};
+
+interface ComputedStoreSubscription<T> {
+  versionIndex: number;
+  resubscribe: () => void;
+  unsubscribe: UnsubscribeFunction;
+  pending: boolean;
+  usedValueIndex: number;
+  valueIndex: number;
+  value: T;
+}
+
+const callUnsubscribe = <T>({ unsubscribe }: ComputedStoreSubscription<T>) => unsubscribe();
+const callResubscribe = <T>({ resubscribe }: ComputedStoreSubscription<T>) => resubscribe();
+
+abstract class ComputedStore<T> extends Store<T> {
+  #computing = false;
+  #skipCallCompute = false;
+  #versionIndex = 0;
+  #subscriptions = new Map<StoreInput<any>, ComputedStoreSubscription<any>>();
+
+  #reactiveContext = <U>(storeInput: StoreInput<U>): U =>
+    untrack(() => this.#getSubscriptionValue(storeInput));
+
+  constructor() {
+    super(undefined as T);
+  }
+
+  #createSubscription<T>(subscribe: Readable<T>['subscribe']) {
+    const res: ComputedStoreSubscription<T> = {
+      versionIndex: this.#versionIndex,
+      unsubscribe: noop,
+      resubscribe: noop,
+      pending: false,
+      usedValueIndex: 0,
+      value: undefined as T,
+      valueIndex: 0,
+    };
+    const subscriber: SubscriberFunction<T> & Partial<SubscriberObject<T>> = (value: T) => {
+      res.value = value;
+      res.valueIndex++;
+      res.pending = false;
+      if (!this.#skipCallCompute && !this.#isPending()) {
+        this.#callCompute();
+      }
+    };
+    subscriber.next = subscriber;
+    subscriber.pause = () => {
+      res.pending = true;
+      this.pauseSubscribers();
+    };
+    subscriber.resume = () => {
+      res.pending = false;
+      if (!this.#skipCallCompute && !this.#isPending()) {
+        this.#callCompute();
+      }
+    };
+    res.resubscribe = () => {
+      res.unsubscribe = subscribe(subscriber);
+      subscriber[oldSubscription] = res.unsubscribe;
+    };
+    res.resubscribe();
+    return res;
+  }
+
+  #getSubscriptionValue<T>(storeInput: StoreInput<T>) {
+    let res = this.#subscriptions.get(storeInput);
+    if (res) {
+      res.versionIndex = this.#versionIndex;
+      (res.unsubscribe as any)[triggerUpdate]?.();
+    } else {
+      res = this.#createSubscription(getNormalizedSubscribe(storeInput));
+      this.#subscriptions.set(storeInput, res);
+    }
+    res.usedValueIndex = res.valueIndex;
+    return res.value;
+  }
+
+  #callCompute(resubscribe = false) {
+    this.#computing = true;
+    this.#skipCallCompute = true;
+    try {
+      if (this.#versionIndex > 0) {
+        if (resubscribe) {
+          this.#subscriptions.forEach(callResubscribe);
+        }
+        if (!this.#hasChange()) {
+          this.resumeSubscribers();
+          return;
+        }
+      }
+      this.#versionIndex++;
+      const versionIndex = this.#versionIndex;
+      const previousReactiveContext = reactiveContext;
+      let value: T;
+      try {
+        reactiveContext = this.#reactiveContext;
+        value = this.compute();
+      } finally {
+        reactiveContext = previousReactiveContext;
+      }
+      this.set(value);
+      for (const [store, info] of this.#subscriptions) {
+        if (info.versionIndex !== versionIndex) {
+          this.#subscriptions.delete(store);
+          info.unsubscribe();
+        }
+      }
+    } finally {
+      this.#skipCallCompute = false;
+      this.#computing = false;
+    }
+  }
+
+  #isPending() {
+    for (const [, { pending }] of this.#subscriptions) {
+      if (pending) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  #hasChange() {
+    for (const [, { valueIndex, usedValueIndex }] of this.#subscriptions) {
+      if (valueIndex != usedValueIndex) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected override resumeSubscribers(): void {
+    if (!this.#isPending()) {
+      super.resumeSubscribers();
+    }
+  }
+
+  /** @internal */
+  protected override [triggerUpdate](): void {
+    if (this.#computing) {
+      throw new Error('recursive computed');
+    }
+    let iterations = 0;
+    while (this.#isPending()) {
+      checkIterations(++iterations);
+      this.#skipCallCompute = true;
+      try {
+        for (const [, { pending, unsubscribe }] of this.#subscriptions) {
+          if (pending) {
+            (unsubscribe as any)[triggerUpdate]?.();
+          }
+        }
+      } finally {
+        this.#skipCallCompute = false;
+      }
+      if (this.#isPending()) {
+        // safety check: if it is still pending after calling triggerUpdate,
+        // it will always be and this is an endless loop
+        break;
+      }
+      this.#callCompute();
+    }
+  }
+
+  protected abstract compute(): T;
+
+  protected override onUse(): Unsubscriber {
+    this.#callCompute(true);
+    this[triggerUpdate]();
+    return () => this.#subscriptions.forEach(callUnsubscribe);
+  }
+}
+
+/**
+ * Creates a store whose value is computed by the provided function.
+ *
+ * @remarks
+ *
+ * The computation function is first called the first time the store is used.
+ * It can use the value of other stores or observables and the computation function is called again if the value of those dependencies
+ * changed, as long as the store is still used.
+ * Dependencies are detected automatically as the computation function gets their value either by calling the stores
+ * as a function (as it is possible with stores implementing {@link ReadableSignal}), or by calling the {@link get} function
+ * (with a store or any observable). If some calls made by the function should not be tracked as dependencies, it is possible
+ * to wrap them in a call to {@link untrack}.
+ * Note that dependencies can change between calls of the computation function. Internally, tansu will subscribe to new dependencies
+ * when they are used and unsubscribe from dependencies that are no longer used after the call of the computation function.
+ *
+ * @param fn - computation function that returns the value of the store
+ * @param options - store options
+ * @returns store containing the value returned by the computation function
+ */
+export function computed<T>(
+  fn: () => T,
+  options: Omit<StoreOptions<T>, 'onUse'> = {}
+): ReadableSignal<T> {
+  const Computed = class extends ComputedStore<T> {
+    protected override compute(): T {
+      return fn();
+    }
+  };
+  return asReadable(
+    applyStoreOptions(new Computed(), {
+      ...options,
+      onUse: undefined /* setting onUse is not allowed from computed */,
     })
   );
 }
