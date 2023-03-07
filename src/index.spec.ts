@@ -1082,13 +1082,53 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should stop notifying following listeners if the value changed in a listener', () => {
+    it('should stop notifying following listeners if the value changed in a listener (finally no change)', () => {
+      const store = writable(0);
+      const values1: number[] = [];
+      const unsubscribePositive = store.subscribe((value) => {
+        values1.push(value);
+        if (value < 0) {
+          store.set(value + 1);
+        }
+      });
+      expect(values1).toEqual([0]);
+      const values2: number[] = [];
+      const unsubscribe = store.subscribe((value) => values2.push(value));
+      expect(values2).toEqual([0]);
+      store.set(-2);
+      expect(values1).toEqual([0, -2, -1, 0]);
+      expect(values2).toEqual([0]);
+      unsubscribePositive();
+      unsubscribe();
+    });
+
+    it('should stop notifying following listeners if the value changed in a listener (finally with change)', () => {
+      const store = writable(1);
+      const values1: number[] = [];
+      const unsubscribePositive = store.subscribe((value) => {
+        values1.push(value);
+        if (value < 0) {
+          store.set(value + 1);
+        }
+      });
+      expect(values1).toEqual([1]);
+      const values2: number[] = [];
+      const unsubscribe = store.subscribe((value) => values2.push(value));
+      expect(values2).toEqual([1]);
+      store.set(-2);
+      expect(values1).toEqual([1, -2, -1, 0]);
+      expect(values2).toEqual([1, 0]);
+      unsubscribePositive();
+      unsubscribe();
+    });
+
+    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally no change)', () => {
       const store = writable(0);
       const identicalStore = derived(store, (value) => value);
       const values1: number[] = [];
-      const unsubscribeEven = identicalStore.subscribe((value) => {
+      const unsubscribePositive = identicalStore.subscribe((value) => {
         values1.push(value);
-        if (value % 2 === 1) {
+        if (value < 0) {
           store.set(value + 1);
         }
       });
@@ -1096,10 +1136,31 @@ describe('stores', () => {
       const values2: number[] = [];
       const unsubscribe = identicalStore.subscribe((value) => values2.push(value));
       expect(values2).toEqual([0]);
-      store.set(1);
-      expect(values1).toEqual([0, 1, 2]);
-      expect(values2).toEqual([0, 2]);
-      unsubscribeEven();
+      store.set(-2);
+      expect(values1).toEqual([0, -2, -1, 0]);
+      expect(values2).toEqual([0]);
+      unsubscribePositive();
+      unsubscribe();
+    });
+
+    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally with change)', () => {
+      const store = writable(1);
+      const identicalStore = derived(store, (value) => value);
+      const values1: number[] = [];
+      const unsubscribePositive = identicalStore.subscribe((value) => {
+        values1.push(value);
+        if (value < 0) {
+          store.set(value + 1);
+        }
+      });
+      expect(values1).toEqual([1]);
+      const values2: number[] = [];
+      const unsubscribe = identicalStore.subscribe((value) => values2.push(value));
+      expect(values2).toEqual([1]);
+      store.set(-2);
+      expect(values1).toEqual([1, -2, -1, 0]);
+      expect(values2).toEqual([1, 0]);
+      unsubscribePositive();
       unsubscribe();
     });
 
