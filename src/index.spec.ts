@@ -12,6 +12,8 @@ import {
   Readable,
   symbolObservable,
   SubscriberObject,
+  computed,
+  untrack,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
@@ -571,6 +573,11 @@ describe('stores', () => {
       expect(get(one)).toBe(1);
     });
 
+    it('should work to call a constant store as a function', () => {
+      const one = readable(1);
+      expect(one()).toBe(1);
+    });
+
     it('should work to subscribe without a listener', () => {
       let used = 0;
       const a = readable(0, () => {
@@ -694,6 +701,17 @@ describe('stores', () => {
 
       counter.set(0);
       expect(get(counter)).toBe(0);
+    });
+
+    it('should work to call a writable as a function', () => {
+      const counter = writable(0);
+      expect(counter()).toBe(0);
+
+      counter.update((c) => c + 1);
+      expect(counter()).toBe(1);
+
+      counter.set(0);
+      expect(counter()).toBe(0);
     });
 
     it('should accept onUse hook function', () => {
@@ -2338,6 +2356,342 @@ describe('stores', () => {
 
       b.unsubscribe();
       c.unsubscribe();
+    });
+  });
+
+  describe('computed', () => {
+    it('should properly subscribe to used stores and unsubscribe from unused ones', () => {
+      const a = writable(true);
+      let bHasListeners = false;
+      const b = writable(0, () => {
+        bHasListeners = true;
+        return () => {
+          bHasListeners = false;
+        };
+      });
+      let cHasListeners = false;
+      const c = writable(1, () => {
+        cHasListeners = true;
+        return () => {
+          cHasListeners = false;
+        };
+      });
+      const computedFn = jasmine.createSpy('computedFn', () => (a() ? b() : c())).and.callThrough();
+      const d = computed(computedFn);
+
+      expect(computedFn).not.toHaveBeenCalled();
+      expect(bHasListeners).toBe(false);
+      expect(cHasListeners).toBe(false);
+      const values: number[] = [];
+      const unsubscribe = d.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      expect(computedFn).toHaveBeenCalledTimes(1);
+      expect(bHasListeners).toBe(true);
+      expect(cHasListeners).toBe(false);
+      b.set(5);
+      expect(values).toEqual([0, 5]);
+      expect(computedFn).toHaveBeenCalledTimes(2);
+      expect(bHasListeners).toBe(true);
+      expect(cHasListeners).toBe(false);
+      c.set(10); // not used, no change
+      expect(values).toEqual([0, 5]);
+      expect(computedFn).toHaveBeenCalledTimes(2);
+      expect(bHasListeners).toBe(true);
+      expect(cHasListeners).toBe(false);
+      a.set(false);
+      expect(values).toEqual([0, 5, 10]);
+      expect(computedFn).toHaveBeenCalledTimes(3);
+      expect(bHasListeners).toBe(false);
+      expect(cHasListeners).toBe(true);
+      b.set(3); // not used, no change
+      expect(values).toEqual([0, 5, 10]);
+      expect(computedFn).toHaveBeenCalledTimes(3);
+      expect(bHasListeners).toBe(false);
+      expect(cHasListeners).toBe(true);
+      unsubscribe();
+      expect(bHasListeners).toBe(false);
+      expect(cHasListeners).toBe(false);
+    });
+
+    it('should not recompute if an untracked store changed', () => {
+      const a = writable(1);
+      const b = writable(2);
+      const multiply = jasmine
+        .createSpy('multiply', () => a() * untrack(() => b()))
+        .and.callThrough();
+      const c = computed(multiply);
+      expect(multiply).not.toHaveBeenCalled();
+      expect(c()).toEqual(2);
+      expect(multiply).toHaveBeenCalledTimes(1);
+      b.set(3);
+      expect(c()).toEqual(2); // should not have been recomputed, as b is untracked
+      expect(multiply).toHaveBeenCalledTimes(1);
+      a.set(2);
+      expect(multiply).toHaveBeenCalledTimes(1); // not yet requested, should not have computed yet
+      expect(c()).toEqual(6); // now that it is recomputed, use the new b value
+      expect(multiply).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not recompute (with get) if dependent stores did not change', () => {
+      const a = writable(1);
+      const double = jasmine.createSpy('double', () => a() * 2).and.callThrough();
+      const b = computed(double);
+      expect(double).not.toHaveBeenCalled();
+      expect(b()).toEqual(2);
+      expect(double).toHaveBeenCalledTimes(1);
+      expect(b()).toEqual(2); // no change, should not recompute
+      expect(double).toHaveBeenCalledTimes(1);
+      a.set(2);
+      expect(double).toHaveBeenCalledTimes(1); // not yet requested, should not have computed yet
+      expect(b()).toEqual(4);
+      expect(double).toHaveBeenCalledTimes(2);
+      a.set(3);
+      a.set(2); // coming back to the value previously used to compute b
+      expect(b()).toEqual(4);
+      expect(double).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not recompute (with permanent subscription) if dependent stores did not change', () => {
+      const a = writable(1);
+      const double = jasmine.createSpy('double', () => a() * 2).and.callThrough();
+      const b = computed(double);
+      expect(double).not.toHaveBeenCalled();
+      const bValues: number[] = [];
+      const unsubscribe = b.subscribe((value) => {
+        bValues.push(value);
+      });
+      expect(bValues).toEqual([2]);
+      expect(double).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(3);
+        a.set(1);
+      });
+      expect(bValues).toEqual([2]);
+      expect(double).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(4);
+        expect(b()).toEqual(8);
+        expect(double).toHaveBeenCalledTimes(2);
+        expect(bValues).toEqual([2]);
+        a.set(1);
+      });
+      expect(double).toHaveBeenCalledTimes(3);
+      expect(bValues).toEqual([2]);
+      unsubscribe();
+    });
+
+    it('should throw when subscribing to a recursive computed', () => {
+      const myValue = computed((): number => myValue());
+      const values: number[] = [];
+      expect(() => {
+        myValue.subscribe((value) => values.push(value));
+      }).toThrowError('recursive computed');
+      expect(values).toEqual([]);
+    });
+
+    it('should throw when setting a value that triggers a recursive computed', () => {
+      const recursive = writable(false);
+      const myValue = computed((): number => (recursive() ? myValue() : 0));
+      const values: number[] = [];
+      myValue.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      expect(() => {
+        recursive.set(true);
+      }).toThrowError('recursive computed');
+    });
+
+    it('should throw when changing a value from computed would result in an infinite loop (on subscribe)', () => {
+      const store = writable(0);
+      const wrongComputed = computed(() => {
+        const res = store();
+        store.set(res + 1);
+        return res;
+      });
+      let reachedSubscriber = false;
+      expect(() => {
+        wrongComputed.subscribe(() => {
+          reachedSubscriber = true;
+        });
+      }).toThrowError('reached maximum number of store changes in one shot');
+      expect(reachedSubscriber).toBe(false);
+    });
+
+    it('should throw when changing a value from computed would result in an infinite loop (on set)', () => {
+      const store = writable(0);
+      const wrongComputed = computed(() => {
+        const res = store();
+        if (res > 10) {
+          store.set(res + 1);
+        }
+        return res;
+      });
+      const values: number[] = [];
+      wrongComputed.subscribe((value) => {
+        values.push(value);
+      });
+      expect(() => {
+        store.set(11);
+      }).toThrowError('reached maximum number of store changes in one shot');
+      expect(values).toEqual([0]);
+    });
+
+    it('should not loop endlessly when using a misbehaving store that calls pause', () => {
+      const misbehavingStore = customSimpleWritable(0);
+      const values: number[] = [];
+      const computedStore = computed(() => get(misbehavingStore));
+      const unsubscribe = computedStore.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      misbehavingStore.set(1);
+      expect(values).toEqual([0, 1]);
+      expect(misbehavingStore.subscribers).toHaveSize(1);
+      misbehavingStore.subscribers[0].pause?.();
+      expect(get(computedStore)).toBe(1);
+      unsubscribe();
+    });
+
+    it('should give the final value synchronously on subscribe in batch when changing the value inside computed', () => {
+      const store = writable(0);
+      const fn = jasmine
+        .createSpy('computedFn', () => {
+          const value = store();
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const computedStore = computed(fn);
+      const values: number[] = [];
+      batch(() => {
+        const unsubscribe = computedStore.subscribe((value) => {
+          values.push(value);
+        });
+        expect(fn).toHaveBeenCalledTimes(11);
+        expect(values).toEqual([10]);
+        unsubscribe();
+      });
+    });
+
+    it('should not notify listeners if the final value did not change when changing the value inside computed', () => {
+      const store = writable(10);
+      const fn = jasmine
+        .createSpy('computedFn', () => {
+          const value = store();
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const computedStore = computed(fn);
+      const values: number[] = [];
+      const unsubscribe = computedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([10]);
+      store.set(0);
+      expect(fn).toHaveBeenCalledTimes(12);
+      expect(values).toEqual([10]);
+      unsubscribe();
+    });
+
+    it('should notify listeners if the final value changed when changing the value inside computed', () => {
+      const store = writable(11);
+      const fn = jasmine
+        .createSpy('computedFn', () => {
+          const value = store();
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const computedStore = computed(fn);
+      const values: number[] = [];
+      const unsubscribe = computedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([11]);
+      store.set(0);
+      expect(fn).toHaveBeenCalledTimes(12);
+      expect(values).toEqual([11, 10]);
+      unsubscribe();
+    });
+
+    it('should call computed functions only with the final value when changing the value inside a dependent computed', () => {
+      const dirtyValue$ = writable(0);
+      const minValue$ = writable(0);
+      const valueComputedFn = jasmine
+        .createSpy('valueComputedFn', () => {
+          const dirtyValue = dirtyValue$();
+          const minValue = minValue$();
+          if (dirtyValue < minValue) {
+            dirtyValue$.set(dirtyValue + 1);
+          }
+          return dirtyValue;
+        })
+        .and.callThrough();
+      const value$ = computed(valueComputedFn);
+      const doubleComputedFn = jasmine
+        .createSpy('doubleComputedFn', () => value$() * 2)
+        .and.callThrough();
+      const double$ = computed(doubleComputedFn);
+
+      const values: number[] = [];
+      const unsubscribeValue = value$.subscribe((value) => {
+        values.push(value);
+      });
+
+      const doubles: number[] = [];
+      const unsubscribeDouble = double$.subscribe((value) => {
+        doubles.push(value);
+      });
+
+      expect(valueComputedFn).toHaveBeenCalledTimes(1);
+      expect(doubleComputedFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([0]);
+      expect(doubles).toEqual([0]);
+
+      minValue$.set(10);
+      expect(valueComputedFn).toHaveBeenCalledTimes(12);
+      expect(doubleComputedFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual([0, 10]);
+      expect(doubles).toEqual([0, 20]);
+
+      unsubscribeValue();
+      unsubscribeDouble();
+    });
+
+    it('should work with a computed store of a computed store that is paused but finally does not change', () => {
+      const a = writable(0);
+      const b = writable(0);
+      const cFn = jasmine.createSpy('cFn', () => `a${a()}`).and.callThrough();
+      const c = computed(cFn);
+      const dFn = jasmine.createSpy('dFn', () => `b${b()}c${c()}`).and.callThrough();
+      const d = computed(dFn);
+      const values: string[] = [];
+      const unsubscribe = d.subscribe((v) => values.push(v));
+      expect(values).toEqual(['b0ca0']);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      batch(() => {
+        a.set(1);
+        a.set(0);
+        b.set(1);
+        expect(cFn).toHaveBeenCalledTimes(1);
+        expect(dFn).toHaveBeenCalledTimes(1);
+        expect(values).toEqual(['b0ca0']);
+      });
+      expect(cFn).toHaveBeenCalledTimes(1); // should not call again cFn as a went back to its initial value
+      expect(dFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['b0ca0', 'b1ca0']);
+      a.set(2);
+      expect(cFn).toHaveBeenCalledTimes(2);
+      expect(dFn).toHaveBeenCalledTimes(3);
+      expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
+      unsubscribe();
     });
   });
 });
