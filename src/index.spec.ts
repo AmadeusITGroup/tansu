@@ -11,10 +11,37 @@ import {
   StoreOptions,
   Readable,
   symbolObservable,
+  SubscriberObject,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
 import { Component, Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+
+const customSimpleWritable = <T>(
+  value: T
+): SubscribableStore<T> & { subscribers: Partial<SubscriberObject<T>>[]; set(value: T): void } => {
+  const subscribers: Partial<SubscriberObject<T>>[] = [];
+  return {
+    subscribers,
+    subscribe(listener) {
+      const listenerObject = typeof listener === 'function' ? { next: listener } : { ...listener };
+      subscribers.push(listenerObject);
+      listenerObject.next?.(value);
+      return () => {
+        const index = subscribers.indexOf(listenerObject);
+        if (index > -1) {
+          subscribers.splice(index, 1);
+        }
+      };
+    },
+    set(v: T) {
+      value = v;
+      subscribers.forEach((l) => {
+        l.next?.(v);
+      });
+    },
+  };
+};
 
 const switchMap = <T, U>(
   store: SubscribableStore<T>,
@@ -1221,6 +1248,192 @@ describe('stores', () => {
         'state:visible=true,transitioning=false,hidden=false',
         '5:finished',
       ]);
+    });
+
+    it('should give the final value synchronously on subscribe outside batch when changing the value inside derived', () => {
+      const store = writable(0);
+      const fn = jasmine
+        .createSpy('deriveFn', (value: number) => {
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const derivedStore = derived(store, fn);
+      const values: number[] = [];
+      const unsubscribe = derivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(fn).toHaveBeenCalledTimes(11);
+      unsubscribe();
+      expect(values).toEqual([10]);
+    });
+
+    it('should give the final value synchronously on subscribe in batch when changing the value inside derived', () => {
+      const store = writable(0);
+      const fn = jasmine
+        .createSpy('deriveFn', (value: number) => {
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const derivedStore = derived(store, fn);
+      const values: number[] = [];
+      batch(() => {
+        const unsubscribe = derivedStore.subscribe((value) => {
+          values.push(value);
+        });
+        expect(fn).toHaveBeenCalledTimes(11);
+        expect(values).toEqual([10]);
+        unsubscribe();
+      });
+    });
+
+    it('should not notify listeners if the final value did not change when changing the value inside derived', () => {
+      const store = writable(10);
+      const fn = jasmine
+        .createSpy('deriveFn', (value: number) => {
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const derivedStore = derived(store, fn);
+      const values: number[] = [];
+      const unsubscribe = derivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([10]);
+      store.set(0);
+      expect(fn).toHaveBeenCalledTimes(12);
+      expect(values).toEqual([10]);
+      unsubscribe();
+    });
+
+    it('should notify listeners if the final value changed when changing the value inside derived', () => {
+      const store = writable(11);
+      const fn = jasmine
+        .createSpy('deriveFn', (value: number) => {
+          if (value < 10) {
+            store.set(value + 1);
+          }
+          return value;
+        })
+        .and.callThrough();
+      const derivedStore = derived(store, fn);
+      const values: number[] = [];
+      const unsubscribe = derivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([11]);
+      store.set(0);
+      expect(fn).toHaveBeenCalledTimes(12);
+      expect(values).toEqual([11, 10]);
+      unsubscribe();
+    });
+
+    it('should call derived functions only with the final value when changing the value inside a dependent derived', () => {
+      const dirtyValue$ = writable(0);
+      const minValue$ = writable(0);
+      const valueDeriveFn = jasmine
+        .createSpy('valueDeriveFn', ([dirtyValue, minValue]: [number, number]) => {
+          if (dirtyValue < minValue) {
+            dirtyValue$.set(dirtyValue + 1);
+          }
+          return dirtyValue;
+        })
+        .and.callThrough();
+      const value$ = derived([dirtyValue$, minValue$], valueDeriveFn);
+      const doubleDeriveFn = jasmine
+        .createSpy('doubleDeriveFn', (value: number) => value * 2)
+        .and.callThrough();
+      const double$ = derived(value$, doubleDeriveFn);
+
+      const values: number[] = [];
+      const unsubscribeValue = value$.subscribe((value) => {
+        values.push(value);
+      });
+
+      const doubles: number[] = [];
+      const unsubscribeDouble = double$.subscribe((value) => {
+        doubles.push(value);
+      });
+
+      expect(valueDeriveFn).toHaveBeenCalledTimes(1);
+      expect(doubleDeriveFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([0]);
+      expect(doubles).toEqual([0]);
+
+      minValue$.set(10);
+      expect(valueDeriveFn).toHaveBeenCalledTimes(12);
+      expect(doubleDeriveFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual([0, 10]);
+      expect(doubles).toEqual([0, 20]);
+
+      unsubscribeValue();
+      unsubscribeDouble();
+    });
+
+    it('should call derived functions only with the final value when changing the value inside a previous independent derived', () => {
+      const dirtyValue$ = writable(0);
+      const minValue$ = writable(0);
+      const valueDeriveFn = jasmine
+        .createSpy('valueDeriveFn', ([dirtyValue, minValue]: [number, number]) => {
+          if (dirtyValue < minValue) {
+            dirtyValue$.set(dirtyValue + 1);
+          }
+          return dirtyValue;
+        })
+        .and.callThrough();
+      const value$ = derived([dirtyValue$, minValue$], valueDeriveFn);
+      const doubleDeriveFn = jasmine
+        .createSpy('doubleDeriveFn', (value: number) => value * 2)
+        .and.callThrough();
+      const double$ = derived(dirtyValue$, doubleDeriveFn); // depends on dirtyValue$, not on value$
+
+      const values: number[] = [];
+      const unsubscribeValue = value$.subscribe((value) => {
+        values.push(value);
+      });
+
+      const doubles: number[] = [];
+      const unsubscribeDouble = double$.subscribe((value) => {
+        doubles.push(value);
+      });
+
+      expect(valueDeriveFn).toHaveBeenCalledTimes(1);
+      expect(doubleDeriveFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual([0]);
+      expect(doubles).toEqual([0]);
+
+      minValue$.set(10);
+      expect(valueDeriveFn).toHaveBeenCalledTimes(12);
+      expect(doubleDeriveFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual([0, 10]);
+      expect(doubles).toEqual([0, 20]);
+
+      unsubscribeValue();
+      unsubscribeDouble();
+    });
+
+    it('should not loop endlessly when using a misbehaving store that calls pause', () => {
+      const misbehavingStore = customSimpleWritable(0);
+      const values: number[] = [];
+      const derivedStore = derived(misbehavingStore, (value) => value);
+      const unsubscribe = derivedStore.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      misbehavingStore.set(1);
+      expect(values).toEqual([0, 1]);
+      expect(misbehavingStore.subscribers).toHaveSize(1);
+      misbehavingStore.subscribers[0].pause?.();
+      expect(get(derivedStore)).toBe(1);
+      unsubscribe();
     });
 
     it('should be able to use destructuring', () => {
