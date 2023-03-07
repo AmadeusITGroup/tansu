@@ -370,10 +370,13 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   private [queueProcess](): void {
+    const valueIndex = this.#valueIndex;
     for (const subscriber of [...this.#subscribers]) {
-      if (this.#subscribersPaused) {
+      if (this.#subscribersPaused || this.#valueIndex !== valueIndex) {
         // the value of the store can change while notifying subscribers
         // in that case, let's just stop notifying subscribers
+        // they will be called later through another queueProcess call
+        // with the correct final value and in the right order
         return;
       }
       if (subscriber._valueIndex === 0) {
