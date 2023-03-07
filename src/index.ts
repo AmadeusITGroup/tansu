@@ -535,11 +535,13 @@ export abstract class Store<T> implements Readable<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
     const subscriberObject = toSubscriberObject(subscriber);
     this.#subscribers.add(subscriberObject);
-    if (this.#subscribers.size == 1) {
-      this.#start();
-    } else {
-      this.#triggerUpdate();
-    }
+    batch(() => {
+      if (this.#subscribers.size == 1) {
+        this.#start();
+      } else {
+        this.#triggerUpdate();
+      }
+    });
     this.#notifySubscriber(subscriberObject);
 
     const unsubscribe = () => {
@@ -755,6 +757,7 @@ const callFn = (fn: () => void) => fn();
 export abstract class DerivedStore<T, S extends StoresInput = StoresInput> extends Store<T> {
   readonly #isArray: boolean;
   readonly #stores: Readable<any>[];
+  #pending = 0;
 
   constructor(stores: S, initialValue: T) {
     super(initialValue);
@@ -763,9 +766,16 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     this.#stores = (isArray ? [...stores] : [stores]).map(asReadable);
   }
 
+  protected resumeSubscribers(): void {
+    if (!this.#pending) {
+      // only resume subscribers if we know that the values of the stores with which
+      // the derived function was called were the correct ones
+      super.resumeSubscribers();
+    }
+  }
+
   protected onUse(): Unsubscriber | void {
     let initDone = false;
-    let pending = 0;
     let changed = 0;
 
     const isArray = this.#isArray;
@@ -782,11 +792,11 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
     };
 
-    const callDerive = (forceCall = false) => {
-      if (forceCall) {
+    const callDerive = (setInitDone = false) => {
+      if (setInitDone) {
         initDone = true;
       }
-      if (initDone && (forceCall || !pending)) {
+      if (initDone && !this.#pending) {
         if (changed) {
           changed = 0;
           callCleanup();
@@ -803,33 +813,44 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
         next: (v) => {
           dependantValues[idx] = v;
           changed |= 1 << idx;
-          pending &= ~(1 << idx);
+          this.#pending &= ~(1 << idx);
           callDerive();
         },
         pause: () => {
-          pending |= 1 << idx;
+          this.#pending |= 1 << idx;
           this.pauseSubscribers();
         },
         resume: () => {
-          pending &= ~(1 << idx);
+          this.#pending &= ~(1 << idx);
           callDerive();
         },
       })
     );
 
-    callDerive(true);
     const clean = () => {
       callCleanup();
       unsubscribers.forEach(callFn);
     };
-    (clean as any)[triggerUpdate] = () => {
-      initDone = false;
-      for (const unsubscriber of unsubscribers) {
-        (unsubscriber as any)[triggerUpdate]?.();
+    const triggerSubscriberPendingUpdate = (unsubscriber: any, idx: number) => {
+      if (this.#pending & (1 << idx)) {
+        unsubscriber[triggerUpdate]?.();
       }
-      callDerive(true);
+    };
+    (clean as any)[triggerUpdate] = () => {
+      while (this.#pending) {
+        initDone = false;
+        unsubscribers.forEach(triggerSubscriberPendingUpdate);
+        if (this.#pending) {
+          // safety check: if pending is not 0 after calling triggerUpdate,
+          // it will never be and this is an endless loop
+          break;
+        }
+        callDerive(true);
+      }
     };
     clean.unsubscribe = clean;
+    callDerive(true);
+    (clean as any)[triggerUpdate]();
     return clean;
   }
 
