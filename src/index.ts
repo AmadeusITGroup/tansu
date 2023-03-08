@@ -227,6 +227,13 @@ const queueProcess = Symbol();
 let willProcessQueue = false;
 const queue = new Set<{ [queueProcess](): void }>();
 
+const MAX_STORE_PROCESSING_IN_QUEUE = 1000;
+const checkIterations = (iterations: number) => {
+  if (iterations > MAX_STORE_PROCESSING_IN_QUEUE) {
+    throw new Error('reached maximum number of store changes in one shot');
+  }
+};
+
 /**
  * Batches multiple changes to stores while calling the provided function,
  * preventing derived stores from updating until the function returns,
@@ -276,11 +283,19 @@ export const batch = <T>(fn: () => T): T => {
     return fn();
   } finally {
     if (needsProcessQueue) {
-      for (const store of queue) {
-        queue.delete(store);
-        store[queueProcess]();
+      try {
+        const storePasses = new Map<{ [queueProcess](): void }, number>();
+        for (const store of queue) {
+          const storeCount = storePasses.get(store) ?? 0;
+          checkIterations(storeCount);
+          storePasses.set(store, storeCount + 1);
+          queue.delete(store);
+          store[queueProcess]();
+        }
+      } finally {
+        queue.clear();
+        willProcessQueue = false;
       }
-      willProcessQueue = false;
     }
   }
 };
@@ -837,7 +852,9 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
     };
     (clean as any)[triggerUpdate] = () => {
+      let iterations = 0;
       while (this.#pending) {
+        checkIterations(++iterations);
         initDone = false;
         unsubscribers.forEach(triggerSubscriberPendingUpdate);
         if (this.#pending) {
