@@ -1109,6 +1109,41 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('should throw when reaching the maximum number of derived iterations (on subscribe)', () => {
+      const store = writable(0);
+      const wrongDerivedStore = derived(store, (value) => {
+        store.set(value - 1); // there is no boundary
+        return value;
+      });
+      let reachedSubscriber = false;
+      expect(() => {
+        wrongDerivedStore.subscribe(() => {
+          reachedSubscriber = true;
+        });
+      }).toThrowError('reached maximum number of store changes in one shot');
+      expect(reachedSubscriber).toBe(false);
+    });
+
+    it('should throw when reaching the maximum number of derived iterations (on set)', () => {
+      const store = writable(0);
+      const wrongDerivedStore = derived(store, (value) => {
+        if (value < 0) {
+          store.set(value - 1); // there is no boundary
+        }
+        return value;
+      });
+      const values: number[] = [];
+      const unsubscribe = wrongDerivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([0]);
+      expect(() => {
+        store.set(-1);
+      }).toThrowError('reached maximum number of store changes in one shot');
+      unsubscribe();
+      expect(values).toEqual([0]);
+    });
+
     it('should stop notifying following listeners if the value changed in a listener (finally no change)', () => {
       const store = writable(0);
       const values1: number[] = [];
