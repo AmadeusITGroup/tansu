@@ -23,4 +23,5 @@ export declare abstract class DerivedStore<T, S extends StoresInput = StoresInpu
 |  --- | --- | --- |
 |  [derive(values)](./tansu.derivedstore.derive.md) | <p><code>protected</code></p><p><code>abstract</code></p> |  |
 |  [onUse()](./tansu.derivedstore.onuse.md) | <code>protected</code> |  |
+|  [resumeSubscribers()](./tansu.derivedstore.resumesubscribers.md) | <code>protected</code> |  |
 
