@@ -807,11 +807,11 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
     };
 
-    const callDerive = (setInitDone = false) => {
+    const callDerive = (setInitDone = false, force = false) => {
       if (setInitDone) {
         initDone = true;
       }
-      if (initDone && !this.#pending) {
+      if (initDone && (!this.#pending || force)) {
         if (changed) {
           changed = 0;
           callCleanup();
@@ -819,7 +819,11 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
             this.derive(isArray ? dependantValues : dependantValues[0])
           );
         }
-        this.resumeSubscribers();
+        if (force) {
+          super.resumeSubscribers();
+        } else {
+          this.resumeSubscribers();
+        }
       }
     };
 
@@ -860,6 +864,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
         if (this.#pending) {
           // safety check: if pending is not 0 after calling triggerUpdate,
           // it will never be and this is an endless loop
+          callDerive(true, true);
           break;
         }
         callDerive(true);
