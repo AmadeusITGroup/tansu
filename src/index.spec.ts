@@ -14,6 +14,7 @@ import {
   SubscriberObject,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
+import { writable as svelteWritable } from 'svelte/store';
 import { Component, Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
@@ -24,7 +25,11 @@ const customSimpleWritable = <T>(
   return {
     subscribers,
     subscribe(listener) {
-      const listenerObject = typeof listener === 'function' ? { next: listener } : { ...listener };
+      const listenerObject = {
+        next: typeof listener === 'function' ? listener.bind(null) : listener?.next?.bind(listener),
+        pause: listener?.pause?.bind(listener),
+        resume: listener?.resume?.bind(listener),
+      };
       subscribers.push(listenerObject);
       listenerObject.next?.(value);
       return () => {
@@ -1011,6 +1016,19 @@ describe('stores', () => {
       expect(deriveFn).toHaveBeenCalledWith(5);
       expect(values).toEqual([4, 10]);
       unsubscribe();
+    });
+
+    it('should be compatible with svelte', () => {
+      const a = svelteWritable(0);
+      const b = derived(a, (a) => a * 2);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      a.set(2);
+      expect(values).toEqual([0, 4]);
+      unsubscribe();
+      a.set(3);
+      expect(values).toEqual([0, 4]);
     });
 
     it('should be compatible with rxjs', () => {

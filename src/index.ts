@@ -20,7 +20,8 @@ export const symbolObservable: typeof Symbol.observable =
 /**
  * A callback invoked when a store value changes. It is called with the latest value of a given store.
  */
-export type SubscriberFunction<T> = (value: T) => void;
+export type SubscriberFunction<T> = ((value: T) => void) &
+  Partial<Omit<SubscriberObject<T>, 'next'>>;
 
 /**
  * A partial {@link https://github.com/tc39/proposal-observable#api | observer} notified when a store value changes. A store will call the {@link SubscriberObject.next | next} method every time the store's state is changing.
@@ -159,24 +160,14 @@ const bind = <T>(object: T | null | undefined, fnName: keyof T) => {
   return typeof fn === 'function' ? fn.bind(object) : noop;
 };
 
-const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObject<T> =>
-  typeof subscriber === 'function'
-    ? {
-        next: subscriber.bind(null),
-        pause: noop,
-        resume: noop,
-        _value: undefined as any,
-        _valueIndex: 0,
-        _paused: false,
-      }
-    : {
-        next: bind(subscriber, 'next'),
-        pause: bind(subscriber, 'pause'),
-        resume: bind(subscriber, 'resume'),
-        _value: undefined as any,
-        _valueIndex: 0,
-        _paused: false,
-      };
+const toSubscriberObject = <T>(subscriber: Subscriber<T>): PrivateSubscriberObject<T> => ({
+  next: typeof subscriber === 'function' ? subscriber.bind(null) : bind(subscriber, 'next'),
+  pause: bind(subscriber, 'pause'),
+  resume: bind(subscriber, 'resume'),
+  _value: undefined as any,
+  _valueIndex: 0,
+  _paused: false,
+});
 
 const returnThis = function <T>(this: T): T {
   return this;
@@ -823,24 +814,24 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
       }
     };
 
-    const unsubscribers = storesArr.map((store, idx) =>
-      store.subscribe({
-        next: (v) => {
-          dependantValues[idx] = v;
-          changed |= 1 << idx;
-          this.#pending &= ~(1 << idx);
-          callDerive();
-        },
-        pause: () => {
-          this.#pending |= 1 << idx;
-          this.pauseSubscribers();
-        },
-        resume: () => {
-          this.#pending &= ~(1 << idx);
-          callDerive();
-        },
-      })
-    );
+    const unsubscribers = storesArr.map((store, idx) => {
+      const subscriber = (v: any) => {
+        dependantValues[idx] = v;
+        changed |= 1 << idx;
+        this.#pending &= ~(1 << idx);
+        callDerive();
+      };
+      subscriber.next = subscriber;
+      subscriber.pause = () => {
+        this.#pending |= 1 << idx;
+        this.pauseSubscribers();
+      };
+      subscriber.resume = () => {
+        this.#pending &= ~(1 << idx);
+        callDerive();
+      };
+      return store.subscribe(subscriber);
+    });
 
     const clean = () => {
       callCleanup();

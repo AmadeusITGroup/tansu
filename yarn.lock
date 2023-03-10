@@ -39,6 +39,7 @@ __metadata:
     pretty-quick: ^3.1.3
     rollup: ^3.18.0
     rxjs: ^7.8.0
+    svelte: ^3.56.0
     typescript: ^4.9.5
     zone.js: ^0.12.0
   languageName: unknown
@@ -9169,6 +9170,13 @@ __metadata:
   version: 1.0.0
   resolution: "supports-preserve-symlinks-flag@npm:1.0.0"
   checksum: 53b1e247e68e05db7b3808b99b892bd36fb096e6fba213a06da7fab22045e97597db425c724f2bbd6c99a3c295e1e73f3e4de78592289f38431049e1277ca0ae
+  languageName: node
+  linkType: hard
+
+"svelte@npm:^3.56.0":
+  version: 3.56.0
+  resolution: "svelte@npm:3.56.0"
+  checksum: d691364416632265dd0bbba23021f5766c5c4f905389978dc73c9c1261141479a7aed9f0bce5e0bde87d7f566e89f18476d95d2299bcac57f165dc7dab3a6095
   languageName: node
   linkType: hard
 
