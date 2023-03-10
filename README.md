@@ -23,7 +23,7 @@ Tansu is designed to be and to remain fully compatible with Svelte. Nevertheless
 * works with the standard `async` pipe out of the box;
 * stores can be registered in the DI container at any level (module or component injector).
 
-### a batch function is available
+### changes to stores are automatically batched
 
 Depending on multiple stores can lead to some issues. Let's have a look at the following example:
 
@@ -50,29 +50,51 @@ Process end
 
 The fullName store successively went through different states, including an inconsistent one, as `Sherlock Lupin` does not exist! Even if it can be seen as just an intermediate state, it is **fundamental** for a state management to only manage consistent data in order to prevent issues and optimize the code.
 
-In Tansu, the [batch function](https://amadeusitgroup.github.io/tansu/tansu.batch.html) is available to defer **synchronously** (another important point) the derived calculation and solve all kind of multiple dependencies issues.
+In Tansu, subscribers are called asynchronously after changes to stores to defer the derived calculation and solve all kind of multiple dependencies issues.
 
 The previous example is resolved this way:
 
 ```typescript
-import {writable, derived, batch} from '@amadeus-it-group/tansu';
+import {writable, derived} from '@amadeus-it-group/tansu';
 
 const firstName = writable('Arsène');
 const lastName = writable('Lupin');
 const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
 fullName.subscribe((name) => console.log(name)); // logs any change to fullName
-batch(() => {
-    firstName.set('Sherlock');
-    lastName.set('Holmes');
-});
-console.log('Process end');
+firstName.set('Sherlock');
+lastName.set('Holmes');
+console.log('after set');
 ```
 With the following output:
 
 ```
 Arsène Lupin
+after set
 Sherlock Holmes
-Process end
+```
+
+Note that the first call of a subscriber is always synchronous and always returns the correct up-to-date value:
+
+```typescript
+import {writable, derived} from '@amadeus-it-group/tansu';
+
+const firstName = writable('Arsène');
+const lastName = writable('Lupin');
+const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
+fullName.subscribe((name) => console.log("subscriber 1: " + name)); // logs any change to fullName
+firstName.set('Sherlock');
+lastName.set('Holmes');
+fullName.subscribe((name) => console.log("subscriber 2: " + name)); // logs any change to fullName
+console.log('after subscribe');
+```
+
+The output of this example will be:
+
+```
+subscriber 1: Arsène Lupin
+subscriber 2: Sherlock Holmes
+after subscribe
+subscriber 1: Sherlock Holmes
 ```
 
 ## Installation

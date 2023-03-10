@@ -215,7 +215,6 @@ export function asReadable<T>(input: StoreInput<T>): Readable<T> {
 
 const triggerUpdate = Symbol();
 const queueProcess = Symbol();
-let willProcessQueue = false;
 const queue = new Set<{ [queueProcess](): void }>();
 
 const MAX_STORE_PROCESSING_IN_QUEUE = 1000;
@@ -225,69 +224,30 @@ const checkIterations = (iterations: number) => {
   }
 };
 
-/**
- * Batches multiple changes to stores while calling the provided function,
- * preventing derived stores from updating until the function returns,
- * to avoid unnecessary recomputations.
- *
- * @remarks
- *
- * If a store is updated multiple times in the provided function, existing
- * subscribers of that store will only be called once when the provided
- * function returns.
- *
- * Note that even though the computation of derived stores is delayed in most
- * cases, some computations of derived stores will still occur inside
- * the function provided to batch if a new subscriber is added to a store, because
- * calling {@link SubscribableStore.subscribe | subscribe} always triggers a
- * synchronous call of the subscriber and because tansu always provides up-to-date
- * values when calling subscribers. Especially, calling {@link get} on a store will
- * always return the correct up-to-date value and can trigger derived store
- * intermediate computations, even inside batch.
- *
- * It is possible to have nested calls of batch, in which case only the first
- * (outer) call has an effect, inner calls only call the provided function.
- *
- * @param fn - a function that can update stores. Its return value is
- * returned by the batch function.
- *
- * @example
- * Using batch in the following example prevents logging the intermediate "Sherlock Lupin" value.
- *
- * ```typescript
- * const firstName = writable('Arsène');
- * const lastName = writable('Lupin');
- * const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
- * fullName.subscribe((name) => console.log(name)); // logs any change to fullName
- * batch(() => {
- *     firstName.set('Sherlock');
- *     lastName.set('Holmes');
- * });
- * ```
- */
-export const batch = <T>(fn: () => T): T => {
-  const needsProcessQueue = !willProcessQueue;
-  if (needsProcessQueue) {
-    willProcessQueue = true;
-  }
+let isFlushPlanned = false;
+const flush = (): void => {
   try {
-    return fn();
-  } finally {
-    if (needsProcessQueue) {
+    const storePasses = new Map<{ [queueProcess](): void }, number>();
+    for (const store of queue) {
+      queue.delete(store);
       try {
-        const storePasses = new Map<{ [queueProcess](): void }, number>();
-        for (const store of queue) {
-          const storeCount = storePasses.get(store) ?? 0;
-          checkIterations(storeCount);
-          storePasses.set(store, storeCount + 1);
-          queue.delete(store);
-          store[queueProcess]();
-        }
-      } finally {
-        queue.clear();
-        willProcessQueue = false;
+        const storeCount = storePasses.get(store) ?? 0;
+        checkIterations(storeCount);
+        storePasses.set(store, storeCount + 1);
+        store[queueProcess]();
+      } catch (error) {
+        console.error(error);
       }
     }
+  } finally {
+    isFlushPlanned = false;
+  }
+};
+
+const planFlush = () => {
+  if (!isFlushPlanned) {
+    isFlushPlanned = true;
+    queueMicrotask(flush);
   }
 };
 
@@ -385,10 +345,6 @@ export abstract class Store<T> implements Readable<T> {
         // with the correct final value and in the right order
         return;
       }
-      if (subscriber._valueIndex === 0) {
-        // ignore subscribers which were not yet called synchronously
-        continue;
-      }
       this.#notifySubscriber(subscriber);
     }
   }
@@ -475,9 +431,8 @@ export abstract class Store<T> implements Readable<T> {
   protected resumeSubscribers(): void {
     if (this.#subscribersPaused) {
       this.#subscribersPaused = false;
-      batch(() => {
-        queue.add(this as any);
-      });
+      queue.add(this as any);
+      planFlush();
     }
   }
 
@@ -541,13 +496,11 @@ export abstract class Store<T> implements Readable<T> {
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
     const subscriberObject = toSubscriberObject(subscriber);
     this.#subscribers.add(subscriberObject);
-    batch(() => {
-      if (this.#subscribers.size == 1) {
-        this.#start();
-      } else {
-        this.#triggerUpdate();
-      }
-    });
+    if (this.#subscribers.size == 1) {
+      this.#start();
+    } else {
+      this.#triggerUpdate();
+    }
     this.#notifySubscriber(subscriberObject);
 
     const unsubscribe = () => {

@@ -7,7 +7,6 @@ import {
   get,
   readable,
   asReadable,
-  batch,
   StoreOptions,
   Readable,
   symbolObservable,
@@ -17,6 +16,8 @@ import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
 import { Component, Injectable } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+
+const nextTick = Promise.resolve();
 
 const customSimpleWritable = <T>(
   value: T
@@ -56,6 +57,16 @@ const switchMap = <T, U>(
   derived(store, { ...options, derive: (value, set) => fn(value).subscribe(set) }, undefined as U);
 
 describe('stores', () => {
+  let errorSpy: jasmine.Spy<typeof console.error>;
+
+  beforeEach(() => {
+    errorSpy = spyOn(console, 'error').and.callFake(() => {});
+  });
+
+  afterEach(() => {
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
   describe('base', () => {
     it('should accept initial value and expose it to subscribers', () => {
       class BasicStore extends Store<string> {}
@@ -67,7 +78,7 @@ describe('stores', () => {
       expect(defValue).toBe('Hello, World');
     });
 
-    it('should allow overriding notEqual', () => {
+    it('should allow overriding notEqual', async () => {
       const notEqualCalls: [number, number][] = [];
       class ModuloStore extends Store<number> {
         constructor(public readonly modulo: number, initialValue: number) {
@@ -85,28 +96,32 @@ describe('stores', () => {
       const changes: number[] = [];
       modulo10.subscribe((value) => changes.push(value));
       modulo10.set(11); // no change
+      await nextTick;
       expect(get(modulo10)).toEqual(1);
       modulo10.set(14);
+      await nextTick;
       expect(get(modulo10)).toEqual(14);
       modulo10.set(4); // no change
+      await nextTick;
       expect(get(modulo10)).toEqual(14);
       modulo10.set(11);
+      await nextTick;
       expect(get(modulo10)).toEqual(11);
       modulo10.set(2);
+      await nextTick;
       expect(get(modulo10)).toEqual(2);
       const changes2: number[] = [];
       const changes3: number[] = [];
-      batch(() => {
-        modulo10.set(3);
-        expect(get(modulo10)).toEqual(3);
-        modulo10.set(4);
-        expect(get(modulo10)).toEqual(4);
-        modulo10.subscribe((value) => changes2.push(value));
-        modulo10.subscribe((value) => changes3.push(value));
-        modulo10.set(5);
-        expect(get(modulo10)).toEqual(5);
-        modulo10.set(2);
-      });
+      modulo10.set(3);
+      expect(get(modulo10)).toEqual(3);
+      modulo10.set(4);
+      expect(get(modulo10)).toEqual(4);
+      modulo10.subscribe((value) => changes2.push(value));
+      modulo10.subscribe((value) => changes3.push(value));
+      modulo10.set(5);
+      expect(get(modulo10)).toEqual(5);
+      modulo10.set(2);
+      await nextTick;
       expect(changes2).toEqual([4, 2]);
       expect(changes3).toEqual([4, 2]);
       expect(changes).toEqual([1, 14, 11, 2]);
@@ -127,7 +142,7 @@ describe('stores', () => {
       ]);
     });
 
-    it('should expose protected methods of setting and updating state', () => {
+    it('should expose protected methods of setting and updating state', async () => {
       class CounterStore extends Store<number> {
         constructor() {
           super(0);
@@ -155,12 +170,15 @@ describe('stores', () => {
 
       store.increment();
       store.increment();
+      await nextTick;
       expect(value).toBe(2);
 
       store.decrement();
+      await nextTick;
       expect(value).toBe(1);
 
       store.reset();
+      await nextTick;
       expect(value).toBe(0);
     });
 
@@ -231,7 +249,7 @@ describe('stores', () => {
       expect(counters).toEqual({ sub: 1, unsub: 1 });
     });
 
-    it('should notify with the value set in onUse to the first subscriber', () => {
+    it('should notify with the value set in onUse to the first subscriber', async () => {
       class MyStore extends Store<string> {
         override onUse() {
           this.set('from onUse');
@@ -251,10 +269,11 @@ describe('stores', () => {
       expect(values).toEqual(['from onUse']);
 
       store.update();
+      await nextTick;
       expect(values).toEqual(['from onUse', 'updated']);
     });
 
-    it('should stop subscriber notification on unsubscribe', () => {
+    it('should stop subscriber notification on unsubscribe', async () => {
       class TickStore extends Store<number> {
         constructor() {
           super(0);
@@ -272,14 +291,16 @@ describe('stores', () => {
       expect(value).toBe(0);
 
       store.tick();
+      await nextTick;
       expect(value).toBe(1);
 
       unsubscribe();
       store.tick();
+      await nextTick;
       expect(value).toBe(1);
     });
 
-    it('should not unsubscribe another listener when calling unsubscribe twice (function signature)', () => {
+    it('should not unsubscribe another listener when calling unsubscribe twice (function signature)', async () => {
       const store = writable(0);
       const values: number[] = [];
       const listener = (value: number) => values.push(value);
@@ -288,19 +309,23 @@ describe('stores', () => {
       const unsubscribe2 = store.subscribe(listener);
       expect(values).toEqual([0, 0]);
       store.set(1);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1]);
       unsubscribe1();
       store.set(2);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2]);
       unsubscribe1(); // should do nothing as unsubscribe1 was already called
       store.set(3);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2, 3]);
       unsubscribe2();
       store.set(4);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2, 3]);
     });
 
-    it('should not unsubscribe another listener when calling unsubscribe twice (object signature)', () => {
+    it('should not unsubscribe another listener when calling unsubscribe twice (object signature)', async () => {
       const store = writable(0);
       const values: number[] = [];
       const listener = { next: (value: number) => values.push(value) };
@@ -309,31 +334,37 @@ describe('stores', () => {
       const unsubscribe2 = store.subscribe(listener);
       expect(values).toEqual([0, 0]);
       store.set(1);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1]);
       unsubscribe1();
       store.set(2);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2]);
       unsubscribe1(); // should do nothing as unsubscribe1 was already called
       store.set(3);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2, 3]);
       unsubscribe2();
       store.set(4);
+      await nextTick;
       expect(values).toEqual([0, 0, 1, 1, 2, 3]);
     });
 
-    it('should expose a working unsubscribe method on the object returned from subscribe', () => {
+    it('should expose a working unsubscribe method on the object returned from subscribe', async () => {
       const store = writable(0);
       const values: number[] = [];
       const unsubscribe = store.subscribe((a) => values.push(a));
       expect(values).toEqual([0]);
       store.set(1);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       unsubscribe.unsubscribe(); // call unsubscribe as rxjs would do
       store.set(2);
+      await nextTick;
       expect(values).toEqual([0, 1]); // unsubscribe worked, value 2 was not received
     });
 
-    it('should work when changing a store in the listener of the store', () => {
+    it('should work when changing a store in the listener of the store', async () => {
       const store = writable(0);
       const calls: number[] = [];
       const unsubscribe = store.subscribe((n) => {
@@ -342,12 +373,13 @@ describe('stores', () => {
           store.set(n + 1);
         }
       });
+      await nextTick;
       expect(calls).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
       expect(get(store)).toEqual(10);
       unsubscribe();
     });
 
-    it('should not call again listeners when only resuming subscribers', () => {
+    it('should not call again listeners when only resuming subscribers', async () => {
       class BasicStore extends Store<object> {
         public override pauseSubscribers(): void {
           super.pauseSubscribers();
@@ -368,8 +400,10 @@ describe('stores', () => {
       expect(calls[0]).toBe(initialValue);
       store.pauseSubscribers();
       store.resumeSubscribers();
+      await nextTick;
       expect(calls.length).toBe(1);
       store.set(newValue);
+      await nextTick;
       expect(calls.length).toBe(2);
       expect(calls[1]).toBe(newValue);
       unsubscribe();
@@ -454,20 +488,22 @@ describe('stores', () => {
       expect(get(i)).toBe(1);
     });
 
-    it('should be compatible with rxjs "from" (writable)', () => {
+    it('should be compatible with rxjs "from" (writable)', async () => {
       const store = writable(0);
       const observable = from(store);
       const values: number[] = [];
       const subscription = observable.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       store.set(1);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       subscription.unsubscribe();
       store.set(2);
+      await nextTick;
       expect(values).toEqual([0, 1]);
     });
 
-    it('should be compatible with rxjs "from" (InteropObservable)', () => {
+    it('should be compatible with rxjs "from" (InteropObservable)', async () => {
       const store = writable(0);
       const interop = { [symbolObservable]: () => store };
       const observable = from(interop);
@@ -475,13 +511,15 @@ describe('stores', () => {
       const subscription = observable.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       store.set(1);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       subscription.unsubscribe();
       store.set(2);
+      await nextTick;
       expect(values).toEqual([0, 1]);
     });
 
-    it('should be compatible with rxjs "from" (Store class)', () => {
+    it('should be compatible with rxjs "from" (Store class)', async () => {
       class TickStore extends Store<number> {
         constructor() {
           super(0);
@@ -497,13 +535,15 @@ describe('stores', () => {
       const subscription = observable.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       store.tick();
+      await nextTick;
       expect(values).toEqual([0, 1]);
       subscription.unsubscribe();
       store.tick();
+      await nextTick;
       expect(values).toEqual([0, 1]);
     });
 
-    it('should work with AsyncPipe', () => {
+    it('should work with AsyncPipe', async () => {
       @Component({
         template: `Value: {{ store | async }}`,
       })
@@ -518,12 +558,13 @@ describe('stores', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 0');
       componentInstance.store.set(1);
+      await nextTick;
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
       fixture.destroy();
     });
 
-    it('should work to inject a class extending Store', () => {
+    it('should work to inject a class extending Store', async () => {
       @Injectable()
       class MyStore extends Store<number> {
         hasListeners = false;
@@ -558,6 +599,7 @@ describe('stores', () => {
       expect(componentInstance.store.hasListeners).toBe(true);
       expect(fixture.nativeElement.textContent).toBe('Value: 0');
       componentInstance.store.increment();
+      await nextTick;
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
       fixture.destroy();
@@ -739,7 +781,7 @@ describe('stores', () => {
     });
 
     // https://github.com/sveltejs/svelte/blob/84ac3a53d53a84194cd9f121a27809a60764d6fc/test/store/index.js
-    it('should not assume immutable data', () => {
+    it('should not assume immutable data', async () => {
       const obj = {};
       let called = 0;
 
@@ -752,13 +794,15 @@ describe('stores', () => {
       expect(called).toBe(1);
 
       store.set(obj);
+      await nextTick;
       expect(called).toBe(2);
 
       store.update((obj) => obj);
+      await nextTick;
       expect(called).toBe(3);
     });
 
-    it('should allow overriding notEqual for immutable data', () => {
+    it('should allow overriding notEqual for immutable data', async () => {
       const obj = {};
       let called = 0;
 
@@ -771,19 +815,23 @@ describe('stores', () => {
       expect(called).toBe(1);
 
       store.set(obj);
+      await nextTick;
       expect(called).toBe(1);
 
       store.update((obj) => obj);
+      await nextTick;
       expect(called).toBe(1);
 
       store.set({ ...obj });
+      await nextTick;
       expect(called).toBe(2);
 
       store.update((obj) => ({ ...obj }));
+      await nextTick;
       expect(called).toBe(3);
     });
 
-    it('should not emit when a primitive value does not change', () => {
+    it('should not emit when a primitive value does not change', async () => {
       const values: any[] = [];
       const numStore = writable(5);
       const strStore = writable('foo');
@@ -803,10 +851,11 @@ describe('stores', () => {
       boolStore.set(true);
       undefinedStore.set(undefined);
       nullStore.set(null);
+      await nextTick;
       expect(values).toEqual([5, 'foo', true, undefined, null]);
     });
 
-    it('should re-emit for an object even if it does not change', () => {
+    it('should re-emit for an object even if it does not change', async () => {
       const values: any[] = [];
       const ref = {};
       const objectStore = writable(ref);
@@ -815,10 +864,11 @@ describe('stores', () => {
       expect(values).toEqual([ref]);
 
       objectStore.set(ref);
+      await nextTick;
       expect(values).toEqual([ref, ref]);
     });
 
-    it('should not emit when setting NaN', () => {
+    it('should not emit when setting NaN', async () => {
       const values: any[] = [];
       const numStore = writable(NaN);
 
@@ -826,6 +876,7 @@ describe('stores', () => {
       expect(values).toEqual([NaN]);
 
       numStore.set(NaN);
+      await nextTick;
       expect(values).toEqual([NaN]);
     });
 
@@ -848,7 +899,7 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with asReadable to expose the store read-only', () => {
+    it('should work with asReadable to expose the store read-only', async () => {
       const writableStore = writable(5);
       const readonlyStore = asReadable(writableStore);
       const values: number[] = [];
@@ -857,9 +908,11 @@ describe('stores', () => {
       });
       expect(values).toEqual([5]);
       writableStore.set(6);
+      await nextTick;
       expect(values).toEqual([5, 6]);
       unsubscribe();
       writableStore.set(7);
+      await nextTick;
       expect(values).toEqual([5, 6]);
 
       expect((readonlyStore as any).set).toBeUndefined();
@@ -906,7 +959,7 @@ describe('stores', () => {
       expect(get(multiplyStore)).toBe(14);
     });
 
-    it('should support an option object from derived shorthand', () => {
+    it('should support an option object from derived shorthand', async () => {
       const numbersStore = writable(0);
       const multiplyStore = derived([numbersStore], { derive: (values) => values[0] * 2 });
       const values: number[] = [];
@@ -915,15 +968,17 @@ describe('stores', () => {
       expect(get(multiplyStore)).toBe(0);
 
       numbersStore.set(5);
+      await nextTick;
       expect(get(multiplyStore)).toBe(10);
 
       numbersStore.set(7);
+      await nextTick;
       expect(get(multiplyStore)).toBe(14);
 
       expect(values).toEqual([0, 10, 14]);
     });
 
-    it('should support an option object with notEqual from derived shorthand', () => {
+    it('should support an option object with notEqual from derived shorthand', async () => {
       const numbersStore = writable(0);
       const multiplyStore = derived([numbersStore], {
         derive: (values) => values[0] * 2,
@@ -935,9 +990,11 @@ describe('stores', () => {
       expect(get(multiplyStore)).toBe(0);
 
       numbersStore.set(5);
+      await nextTick;
       expect(get(multiplyStore)).toBe(0);
 
       numbersStore.set(7);
+      await nextTick;
       expect(get(multiplyStore)).toBe(14);
 
       expect(values).toEqual([0, 14]);
@@ -963,7 +1020,7 @@ describe('stores', () => {
       expect(onUseCalls).toEqual(0);
     });
 
-    it('should properly support unsubscribing', () => {
+    it('should properly support unsubscribing', async () => {
       const counter = writable(0);
       const multiply = derived([counter], ([val]) => 2 * val);
 
@@ -974,10 +1031,11 @@ describe('stores', () => {
 
       unsubscribe();
       counter.set(1);
+      await nextTick;
       expect(values).toEqual([0]);
     });
 
-    it('should have convenient signature for single source', () => {
+    it('should have convenient signature for single source', async () => {
       const counter = writable(0);
       const multiply = derived(counter, (val) => 2 * val);
 
@@ -989,14 +1047,16 @@ describe('stores', () => {
       expect(values).toEqual([0]);
 
       counter.update((c) => c + 1);
+      await nextTick;
       expect(values).toEqual([0, 2]);
 
       unsubscribe();
       counter.update((c) => c + 1);
+      await nextTick;
       expect(values).toEqual([0, 2]);
     });
 
-    it('should only call deriveFn when there is a subscriber', () => {
+    it('should only call deriveFn when there is a subscriber', async () => {
       const a = writable(2);
       const deriveFn = jasmine.createSpy('deriveFn', (a) => a * 2).and.callThrough();
       const b = derived(a, deriveFn);
@@ -1009,6 +1069,7 @@ describe('stores', () => {
       expect(values).toEqual([4]);
       unsubscribe();
       a.set(5);
+      await nextTick;
       expect(deriveFn).not.toHaveBeenCalled();
       expect(values).toEqual([4]);
       unsubscribe = b.subscribe((b) => values.push(b));
@@ -1018,33 +1079,37 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should be compatible with svelte', () => {
+    it('should be compatible with svelte', async () => {
       const a = svelteWritable(0);
       const b = derived(a, (a) => a * 2);
       const values: number[] = [];
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       a.set(2);
+      await nextTick;
       expect(values).toEqual([0, 4]);
       unsubscribe();
       a.set(3);
+      await nextTick;
       expect(values).toEqual([0, 4]);
     });
 
-    it('should be compatible with rxjs', () => {
+    it('should be compatible with rxjs', async () => {
       const a = new BehaviorSubject(0);
       const b = derived(a, (a) => a * 2);
       const values: number[] = [];
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       a.next(2);
+      await nextTick;
       expect(values).toEqual([0, 4]);
       unsubscribe();
       a.next(3);
+      await nextTick;
       expect(values).toEqual([0, 4]);
     });
 
-    it('should be compatible with InteropObservable', () => {
+    it('should be compatible with InteropObservable', async () => {
       const a = new BehaviorSubject(0);
       const i = { [symbolObservable]: () => a };
       const b = derived(i, (i) => i * 2);
@@ -1052,14 +1117,16 @@ describe('stores', () => {
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       a.next(2);
+      await nextTick;
       expect(values).toEqual([0, 4]);
       unsubscribe();
       a.next(3);
+      await nextTick;
       expect(values).toEqual([0, 4]);
     });
 
     // https://github.com/sveltejs/svelte/blob/84ac3a53d53a84194cd9f121a27809a60764d6fc/test/store/index.js#L148
-    it('should derive from multiple stores', () => {
+    it('should derive from multiple stores', async () => {
       const a = writable(2);
       const b = writable(3);
       const c = derived([a, b], ([a, b]) => a * b);
@@ -1071,12 +1138,15 @@ describe('stores', () => {
       });
 
       a.set(4);
+      await nextTick;
       b.set(5);
+      await nextTick;
       expect(values).toEqual([6, 12, 20]);
 
       unsubscribe();
 
       a.set(6);
+      await nextTick;
       expect(values).toEqual([6, 12, 20]);
     });
 
@@ -1088,7 +1158,7 @@ describe('stores', () => {
       expect(get(repeat)).toBe('Hi!Hi!');
     });
 
-    it('should prevent the diamond dependency problem', () => {
+    it('should prevent the diamond dependency problem', async () => {
       const a = writable(0);
       const b = derived(a, (a) => `b${a}`);
       const c = derived(a, (a) => `c${a}`);
@@ -1103,12 +1173,13 @@ describe('stores', () => {
       expect(dFn).toHaveBeenCalledTimes(1);
       expect(values).toEqual(['b0c0']);
       a.set(1);
+      await nextTick;
       expect(dFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual(['b0c0', 'b1c1']);
       unsubscribe();
     });
 
-    it('should prevent the asymmetric diamond dependency problem', () => {
+    it('should prevent the asymmetric diamond dependency problem', async () => {
       const a = writable(0);
       const b = derived(a, (a) => `b${a}`);
       const cFn = jasmine.createSpy('cFn', ([a, b]) => `${a}${b}`).and.callThrough();
@@ -1122,12 +1193,13 @@ describe('stores', () => {
       expect(cFn).toHaveBeenCalledTimes(1);
       expect(values).toEqual(['0b0']);
       a.set(1);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual(['0b0', '1b1']);
       unsubscribe();
     });
 
-    it('should throw when reaching the maximum number of derived iterations (on subscribe)', () => {
+    it('should throw when reaching the maximum number of derived iterations (on subscribe)', async () => {
       const store = writable(0);
       const wrongDerivedStore = derived(store, (value) => {
         store.set(value - 1); // there is no boundary
@@ -1140,9 +1212,15 @@ describe('stores', () => {
         });
       }).toThrowError('reached maximum number of store changes in one shot');
       expect(reachedSubscriber).toBe(false);
+      await nextTick;
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.calls.first().args[0].message).toContain(
+        'reached maximum number of store changes in one shot'
+      );
+      errorSpy.calls.reset();
     });
 
-    it('should throw when reaching the maximum number of derived iterations (on set)', () => {
+    it('should throw when reaching the maximum number of derived iterations (on set)', async () => {
       const store = writable(0);
       const wrongDerivedStore = derived(store, (value) => {
         if (value < 0) {
@@ -1155,14 +1233,18 @@ describe('stores', () => {
         values.push(value);
       });
       expect(values).toEqual([0]);
-      expect(() => {
-        store.set(-1);
-      }).toThrowError('reached maximum number of store changes in one shot');
+      store.set(-1);
+      await nextTick;
+      expect(errorSpy).toHaveBeenCalledTimes(1);
+      expect(errorSpy.calls.first().args[0].message).toContain(
+        'reached maximum number of store changes in one shot'
+      );
+      errorSpy.calls.reset();
       unsubscribe();
       expect(values).toEqual([0]);
     });
 
-    it('should stop notifying following listeners if the value changed in a listener (finally no change)', () => {
+    it('should stop notifying following listeners if the value changed in a listener (finally no change)', async () => {
       const store = writable(0);
       const values1: number[] = [];
       const unsubscribePositive = store.subscribe((value) => {
@@ -1176,13 +1258,14 @@ describe('stores', () => {
       const unsubscribe = store.subscribe((value) => values2.push(value));
       expect(values2).toEqual([0]);
       store.set(-2);
+      await nextTick;
       expect(values1).toEqual([0, -2, -1, 0]);
       expect(values2).toEqual([0]);
       unsubscribePositive();
       unsubscribe();
     });
 
-    it('should stop notifying following listeners if the value changed in a listener (finally with change)', () => {
+    it('should stop notifying following listeners if the value changed in a listener (finally with change)', async () => {
       const store = writable(1);
       const values1: number[] = [];
       const unsubscribePositive = store.subscribe((value) => {
@@ -1196,13 +1279,14 @@ describe('stores', () => {
       const unsubscribe = store.subscribe((value) => values2.push(value));
       expect(values2).toEqual([1]);
       store.set(-2);
+      await nextTick;
       expect(values1).toEqual([1, -2, -1, 0]);
       expect(values2).toEqual([1, 0]);
       unsubscribePositive();
       unsubscribe();
     });
 
-    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally no change)', () => {
+    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally no change)', async () => {
       const store = writable(0);
       const identicalStore = derived(store, (value) => value);
       const values1: number[] = [];
@@ -1217,13 +1301,14 @@ describe('stores', () => {
       const unsubscribe = identicalStore.subscribe((value) => values2.push(value));
       expect(values2).toEqual([0]);
       store.set(-2);
+      await nextTick;
       expect(values1).toEqual([0, -2, -1, 0]);
       expect(values2).toEqual([0]);
       unsubscribePositive();
       unsubscribe();
     });
 
-    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally with change)', () => {
+    it('should stop notifying following listeners of a derived store if the value changed in a listener (finally with change)', async () => {
       const store = writable(1);
       const identicalStore = derived(store, (value) => value);
       const values1: number[] = [];
@@ -1238,13 +1323,14 @@ describe('stores', () => {
       const unsubscribe = identicalStore.subscribe((value) => values2.push(value));
       expect(values2).toEqual([1]);
       store.set(-2);
+      await nextTick;
       expect(values1).toEqual([1, -2, -1, 0]);
       expect(values2).toEqual([1, 0]);
       unsubscribePositive();
       unsubscribe();
     });
 
-    it('should not have glitches when setting the value of a store inside derived', () => {
+    it('should not have glitches when setting the value of a store inside derived', async () => {
       const events: string[] = [];
       const currentlyVisible$ = writable(true);
       const visible$ = writable(true);
@@ -1267,10 +1353,8 @@ describe('stores', () => {
         [currentlyVisible$, visible$],
         ([currentlyVisible, visible]) => {
           if (currentlyVisible !== visible) {
-            batch(() => {
-              transitioning$.set(true);
-              currentlyVisible$.set(visible);
-            });
+            transitioning$.set(true);
+            currentlyVisible$.set(visible);
           }
         }
       );
@@ -1280,12 +1364,16 @@ describe('stores', () => {
       const unsubscribeVisibleChange = visibleChange.subscribe(() => {});
       events.push('1:set visible=false');
       visible$.set(false);
+      await nextTick;
       events.push('2:set transitioning=false');
       transitioning$.set(false);
+      await nextTick;
       events.push('3:set visible=true');
       visible$.set(true);
+      await nextTick;
       events.push('4:set transitioning=false');
       transitioning$.set(false);
+      await nextTick;
       events.push('5:finished');
       unsubscribeVisibleChange();
       unsubscribeState();
@@ -1303,7 +1391,7 @@ describe('stores', () => {
       ]);
     });
 
-    it('should give the final value synchronously on subscribe outside batch when changing the value inside derived', () => {
+    it('should give the final value synchronously on subscribe when changing the value inside derived', () => {
       const store = writable(0);
       const fn = jasmine
         .createSpy('deriveFn', (value: number) => {
@@ -1323,29 +1411,7 @@ describe('stores', () => {
       expect(values).toEqual([10]);
     });
 
-    it('should give the final value synchronously on subscribe in batch when changing the value inside derived', () => {
-      const store = writable(0);
-      const fn = jasmine
-        .createSpy('deriveFn', (value: number) => {
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
-      const derivedStore = derived(store, fn);
-      const values: number[] = [];
-      batch(() => {
-        const unsubscribe = derivedStore.subscribe((value) => {
-          values.push(value);
-        });
-        expect(fn).toHaveBeenCalledTimes(11);
-        expect(values).toEqual([10]);
-        unsubscribe();
-      });
-    });
-
-    it('should not notify listeners if the final value did not change when changing the value inside derived', () => {
+    it('should not notify listeners if the final value did not change when changing the value inside derived', async () => {
       const store = writable(10);
       const fn = jasmine
         .createSpy('deriveFn', (value: number) => {
@@ -1363,12 +1429,13 @@ describe('stores', () => {
       expect(fn).toHaveBeenCalledTimes(1);
       expect(values).toEqual([10]);
       store.set(0);
+      await nextTick;
       expect(fn).toHaveBeenCalledTimes(12);
       expect(values).toEqual([10]);
       unsubscribe();
     });
 
-    it('should notify listeners if the final value changed when changing the value inside derived', () => {
+    it('should notify listeners if the final value changed when changing the value inside derived', async () => {
       const store = writable(11);
       const fn = jasmine
         .createSpy('deriveFn', (value: number) => {
@@ -1386,12 +1453,13 @@ describe('stores', () => {
       expect(fn).toHaveBeenCalledTimes(1);
       expect(values).toEqual([11]);
       store.set(0);
+      await nextTick;
       expect(fn).toHaveBeenCalledTimes(12);
       expect(values).toEqual([11, 10]);
       unsubscribe();
     });
 
-    it('should call derived functions only with the final value when changing the value inside a dependent derived', () => {
+    it('should call derived functions only with the final value when changing the value inside a dependent derived', async () => {
       const dirtyValue$ = writable(0);
       const minValue$ = writable(0);
       const valueDeriveFn = jasmine
@@ -1424,6 +1492,7 @@ describe('stores', () => {
       expect(doubles).toEqual([0]);
 
       minValue$.set(10);
+      await nextTick;
       expect(valueDeriveFn).toHaveBeenCalledTimes(12);
       expect(doubleDeriveFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual([0, 10]);
@@ -1433,7 +1502,7 @@ describe('stores', () => {
       unsubscribeDouble();
     });
 
-    it('should call derived functions only with the final value when changing the value inside a previous independent derived', () => {
+    it('should call derived functions only with the final value when changing the value inside a previous independent derived', async () => {
       const dirtyValue$ = writable(0);
       const minValue$ = writable(0);
       const valueDeriveFn = jasmine
@@ -1466,6 +1535,7 @@ describe('stores', () => {
       expect(doubles).toEqual([0]);
 
       minValue$.set(10);
+      await nextTick;
       expect(valueDeriveFn).toHaveBeenCalledTimes(12);
       expect(doubleDeriveFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual([0, 10]);
@@ -1475,13 +1545,14 @@ describe('stores', () => {
       unsubscribeDouble();
     });
 
-    it('should not loop endlessly when using a misbehaving store that calls pause', () => {
+    it('should not loop endlessly when using a misbehaving store that calls pause', async () => {
       const misbehavingStore = customSimpleWritable(0);
       const values: number[] = [];
       const derivedStore = derived(misbehavingStore, (value) => value);
       const unsubscribe = derivedStore.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       misbehavingStore.set(1);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       expect(misbehavingStore.subscribers).toHaveSize(1);
       misbehavingStore.subscribers[0].pause?.();
@@ -1503,7 +1574,7 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with DebounceStore example', () => {
+    it('should work with DebounceStore example', async () => {
       class DebounceStore<T> extends DerivedStore<T, SubscribableStore<T>> {
         constructor(store: SubscribableStore<T>, initialValue: T, private _delay: number) {
           super(store, initialValue);
@@ -1515,25 +1586,35 @@ describe('stores', () => {
       }
       const clock = jasmine.clock();
       clock.uninstall();
-      clock.withMock(() => {
+      clock.install();
+      try {
         const a = writable(1);
         const b = new DebounceStore(a, 0, 100);
         const values: number[] = [];
         const unsubscribe = b.subscribe((value) => values.push(value));
         expect(values).toEqual([0]);
         clock.tick(99);
+        await nextTick;
         expect(values).toEqual([0]);
         clock.tick(1);
+        await nextTick;
         expect(values).toEqual([0, 1]);
         a.set(2);
+        await nextTick;
         clock.tick(1);
+        await nextTick;
         a.set(3);
+        await nextTick;
         clock.tick(99);
+        await nextTick;
         expect(values).toEqual([0, 1]);
         clock.tick(1);
+        await nextTick;
         expect(values).toEqual([0, 1, 3]);
         unsubscribe();
-      });
+      } finally {
+        clock.uninstall();
+      }
     });
 
     it('should infer types automatically in the async case', () => {
@@ -1556,7 +1637,7 @@ describe('stores', () => {
       expect(get(sum)).toBe(3);
     });
 
-    it('should work to call update in the async case', () => {
+    it('should work to call update in the async case', async () => {
       const a = writable(0);
       const history = derived(
         a,
@@ -1574,6 +1655,7 @@ describe('stores', () => {
       const unsubscribe = history.subscribe((value) => historyValues.push(value));
       expect(historyValues).toEqual([[0]]);
       a.set(1);
+      await nextTick;
       expect(historyValues).toEqual([[0], [0, 1]]);
       unsubscribe();
       expect(get(history)).toEqual([0, 1]);
@@ -1581,7 +1663,7 @@ describe('stores', () => {
       expect(get(history)).toEqual([0, 1, 10]);
     });
 
-    it('should call clean-up function returned in deriveFn with derived', () => {
+    it('should call clean-up function returned in deriveFn with derived', async () => {
       const a = writable(1);
       const cleanUpFn = jasmine.createSpy('cleanupFn').and.callThrough();
       const deriveFn = jasmine
@@ -1599,6 +1681,7 @@ describe('stores', () => {
       deriveFn.calls.reset();
       expect(cleanUpFn).not.toHaveBeenCalled();
       a.set(3);
+      await nextTick;
       expect(values).toEqual([2, 6]);
       expect(deriveFn).toHaveBeenCalledTimes(1);
       deriveFn.calls.reset();
@@ -1611,7 +1694,7 @@ describe('stores', () => {
       expect(cleanUpFn).toHaveBeenCalledWith(3);
     });
 
-    it('should work with a derived function that calls set on a store it depends on without any impact on its own input value', () => {
+    it('should work with a derived function that calls set on a store it depends on without any impact on its own input value', async () => {
       const defaultValue = writable(0);
       const ownValue = writable(undefined as number | undefined);
       const dirtyValue = derived([ownValue, defaultValue], ([ownValue, defaultValue]) =>
@@ -1633,17 +1716,19 @@ describe('stores', () => {
       expect(get(ownValue)).toBe(0);
       doSet = false;
       ownValue.set(undefined);
+      await nextTick;
       expect(derivedCalls).toBe(1);
       expect(calls).toEqual([0]);
       doSet = true;
       defaultValue.set(1);
+      await nextTick;
       expect(derivedCalls).toBe(2);
       expect(calls).toEqual([0, 1]);
       expect(get(ownValue)).toBe(1);
       unsubscribe();
     });
 
-    it('should work with a derived function that subscribes to itself', () => {
+    it('should work with a derived function that subscribes to itself', async () => {
       const store = writable(0);
       let derivedCalls = 0;
       let innerUnsubscribe: undefined | (() => void);
@@ -1659,13 +1744,16 @@ describe('stores', () => {
       const calls: number[] = [];
       const unsubscribe = derivedStore.subscribe((n: number) => calls.push(n));
       expect(derivedCalls).toBe(1);
+      expect(calls).toEqual([0]);
+      expect(innerSubscriptionCalls).toEqual([undefined]);
+      await nextTick;
       expect(innerSubscriptionCalls).toEqual([undefined, 0]);
       expect(calls).toEqual([0]);
       unsubscribe();
       innerUnsubscribe!();
     });
 
-    it('should work with a basic switchMap', () => {
+    it('should work with a basic switchMap', async () => {
       const a = writable(0);
       const b = writable(1);
       const c = writable(a);
@@ -1674,19 +1762,24 @@ describe('stores', () => {
       const unsubscribe = d.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
       c.set(b);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       b.set(2);
+      await nextTick;
       expect(values).toEqual([0, 1, 2]);
       a.set(3);
+      await nextTick;
       expect(values).toEqual([0, 1, 2]);
       c.set(a);
+      await nextTick;
       expect(values).toEqual([0, 1, 2, 3]);
       unsubscribe();
       a.set(4);
+      await nextTick;
       expect(values).toEqual([0, 1, 2, 3]);
     });
 
-    it('should work with switchMap and multiple levels of derived', () => {
+    it('should work with switchMap and multiple levels of derived', async () => {
       const defConfig = { a: 1 };
       const config = writable<Partial<typeof defConfig>>({});
       const configA = derived(config, (config) => config?.a);
@@ -1697,92 +1790,86 @@ describe('stores', () => {
       const unsubscribe = aFinal.subscribe((value) => a.push(value));
       expect(a).toEqual([1]);
       config.set({ a: 2 });
+      await nextTick;
       expect(a).toEqual([1, 2]);
       config.set({});
+      await nextTick;
       expect(a).toEqual([1, 2, 1]);
       aOwn.set(5);
+      await nextTick;
       expect(a).toEqual([1, 2, 1, 5]);
       config.set({ a: 6 });
+      await nextTick;
       expect(a).toEqual([1, 2, 1, 5]);
       aOwn.set(undefined);
+      await nextTick;
       expect(a).toEqual([1, 2, 1, 5, 6]);
       unsubscribe();
     });
   });
 
   describe('batch', () => {
-    it('should work with two writables and a derived', () => {
+    it('should work with two writables and a derived', async () => {
       const firstName = writable('Arsène');
       const lastName = writable('Lupin');
       const fullName = derived([firstName, lastName], ([a, b]) => `${a} ${b}`);
       const values: string[] = [];
       const unsubscribe = fullName.subscribe((value) => values.push(value));
-      const expectedRes = {};
-      const res = batch(() => {
-        firstName.set('Sherlock');
-        lastName.set('Holmes');
-        return expectedRes;
-      });
+      firstName.set('Sherlock');
+      lastName.set('Holmes');
+      await nextTick;
       expect(values).toEqual(['Arsène Lupin', 'Sherlock Holmes']);
-      expect(res).toBe(expectedRes);
       unsubscribe();
     });
 
-    it('should not call listeners multiple times', () => {
+    it('should not call listeners multiple times', async () => {
       const store = writable(0);
       const calls: number[] = [];
       const unsubscribe = store.subscribe((n) => calls.push(n));
       expect(calls).toEqual([0]);
-      batch(() => {
-        store.set(1);
-        store.set(2);
-        expect(calls).toEqual([0]);
-      });
+      store.set(1);
+      store.set(2);
+      expect(calls).toEqual([0]);
+      await nextTick;
       expect(calls).toEqual([0, 2]);
       unsubscribe();
     });
 
-    it('should allow nested calls', () => {
+    it('should allow nested calls', async () => {
       const store = writable(0);
       const calls: number[] = [];
       const unsubscribe = store.subscribe((n) => calls.push(n));
       expect(calls).toEqual([0]);
-      batch(() => {
-        store.set(1);
-        store.set(2);
-        batch(() => {
-          store.set(3);
-          store.set(4);
-        });
-        store.set(5);
-        batch(() => {
-          store.set(6);
-          store.set(7);
-        });
-        expect(calls).toEqual([0]);
-      });
+      store.set(1);
+      store.set(2);
+      store.set(3);
+      store.set(4);
+      store.set(5);
+      store.set(6);
+      store.set(7);
+      expect(calls).toEqual([0]);
+      await nextTick;
       expect(calls).toEqual([0, 7]);
       unsubscribe();
     });
 
-    it('should still call multiple times the listeners registered multiple times', () => {
+    it('should still call multiple times the listeners registered multiple times', async () => {
       const store = writable(0);
       const calls: number[] = [];
       const fn = (n: number) => calls.push(n);
       const unsubscribe1 = store.subscribe(fn);
       const unsubscribe2 = store.subscribe(fn);
       expect(calls).toEqual([0, 0]);
-      batch(() => {
-        store.set(1);
-        store.set(2);
-        expect(calls).toEqual([0, 0]);
-      });
+      store.set(1);
+      store.set(2);
+      expect(calls).toEqual([0, 0]);
+      await nextTick;
       expect(calls).toEqual([0, 0, 2, 2]);
       unsubscribe1();
       unsubscribe2();
     });
 
-    it('should not call pause multiple times', () => {
+    it('should not call pause multiple times', async () => {
       const store = writable(0);
       let pauseCalls = 0;
       const unsubscribe = store.subscribe({
@@ -1792,49 +1879,46 @@ describe('stores', () => {
         },
       });
       expect(pauseCalls).toEqual(0);
-      batch(() => {
-        expect(pauseCalls).toEqual(0);
-        store.set(1);
-        expect(pauseCalls).toEqual(1);
-        store.set(2);
-        expect(pauseCalls).toEqual(1);
-      });
+      expect(pauseCalls).toEqual(0);
+      store.set(1);
+      expect(pauseCalls).toEqual(1);
+      store.set(2);
+      expect(pauseCalls).toEqual(1);
+      await nextTick;
       expect(pauseCalls).toEqual(1);
       unsubscribe();
     });
 
-    it('should not call again listeners when the value finally did not change', () => {
+    it('should not call again listeners when the value finally did not change', async () => {
       const a = writable(0);
       const values: number[] = [];
       const unsubscribe = a.subscribe((value) => {
         values.push(value);
       });
       expect(values).toEqual([0]);
-      batch(() => {
-        a.set(0);
-        expect(get(a)).toEqual(0);
-        a.set(1);
-        expect(get(a)).toEqual(1);
-        a.set(0);
-        expect(get(a)).toEqual(0);
-      });
+      a.set(0);
+      expect(get(a)).toEqual(0);
+      a.set(1);
+      expect(get(a)).toEqual(1);
+      a.set(0);
+      expect(get(a)).toEqual(0);
+      await nextTick;
       expect(values).toEqual([0]);
       expect(get(a)).toEqual(0);
-      batch(() => {
-        a.set(1);
-        expect(get(a)).toEqual(1);
-        a.set(0);
-        expect(get(a)).toEqual(0);
-        a.set(1);
-        expect(get(a)).toEqual(1);
-        expect(values).toEqual([0]);
-      });
+      a.set(1);
+      expect(get(a)).toEqual(1);
+      a.set(0);
+      expect(get(a)).toEqual(0);
+      a.set(1);
+      expect(get(a)).toEqual(1);
+      expect(values).toEqual([0]);
+      await nextTick;
       expect(values).toEqual([0, 1]);
       expect(get(a)).toEqual(1);
       unsubscribe();
     });
 
-    it('should not call again listeners when the original value finally did not change with a derived', () => {
+    it('should not call again listeners when the original value finally did not change with a derived', async () => {
       const a = writable(0);
       const b = derived(a, (a) => a + 1);
       const values: number[] = [];
@@ -1842,31 +1926,29 @@ describe('stores', () => {
         values.push(value);
       });
       expect(values).toEqual([1]);
-      batch(() => {
-        a.set(0);
-        expect(get(b)).toEqual(1);
-        a.set(1);
-        expect(get(b)).toEqual(2);
-        a.set(0);
-        expect(get(b)).toEqual(1);
-      });
+      a.set(0);
+      expect(get(b)).toEqual(1);
+      a.set(1);
+      expect(get(b)).toEqual(2);
+      a.set(0);
+      expect(get(b)).toEqual(1);
+      await nextTick;
       expect(values).toEqual([1]);
       expect(get(b)).toEqual(1);
-      batch(() => {
-        a.set(1);
-        expect(get(b)).toEqual(2);
-        a.set(0);
-        expect(get(b)).toEqual(1);
-        a.set(1);
-        expect(get(b)).toEqual(2);
-        expect(values).toEqual([1]);
-      });
+      a.set(1);
+      expect(get(b)).toEqual(2);
+      a.set(0);
+      expect(get(b)).toEqual(1);
+      a.set(1);
+      expect(get(b)).toEqual(2);
+      expect(values).toEqual([1]);
+      await nextTick;
       expect(values).toEqual([1, 2]);
       expect(get(b)).toEqual(2);
       unsubscribe();
     });
 
-    it('should not call again listeners when the derived value finally did not change', () => {
+    it('should not call again listeners when the derived value finally did not change', async () => {
       const a = writable(0);
       const isEven = derived(a, (a) => a % 2 === 0);
       const values: boolean[] = [];
@@ -1875,130 +1957,123 @@ describe('stores', () => {
       });
       expect(values).toEqual([true]);
       expect(get(isEven)).toEqual(true);
-      batch(() => {
-        a.set(0); // isEven = true
-        expect(get(isEven)).toEqual(true);
-        a.set(1); // isEven = false
-        expect(get(isEven)).toEqual(false);
-        a.set(2); // isEven = true again
-        expect(get(isEven)).toEqual(true);
-      });
+      a.set(0); // isEven = true
+      expect(get(isEven)).toEqual(true);
+      a.set(1); // isEven = false
+      expect(get(isEven)).toEqual(false);
+      a.set(2); // isEven = true again
+      expect(get(isEven)).toEqual(true);
+      await nextTick;
       expect(values).toEqual([true]);
       expect(get(isEven)).toEqual(true);
-      batch(() => {
-        a.set(3); // isEven = false
-        expect(get(isEven)).toEqual(false);
-        a.set(4); // isEven = true
-        expect(get(isEven)).toEqual(true);
-        a.set(5); // isEven = false
-        expect(get(isEven)).toEqual(false);
-        expect(values).toEqual([true]);
-      });
+      a.set(3); // isEven = false
+      expect(get(isEven)).toEqual(false);
+      a.set(4); // isEven = true
+      expect(get(isEven)).toEqual(true);
+      a.set(5); // isEven = false
+      expect(get(isEven)).toEqual(false);
+      expect(values).toEqual([true]);
+      await nextTick;
       expect(values).toEqual([true, false]);
       expect(get(isEven)).toEqual(false);
       unsubscribe();
     });
 
-    it('should work when first subscribing to a store inside batch', () => {
+    it('should work when first subscribing to a store inside batch', async () => {
       const a = writable(0);
       const values: number[] = [];
-      let unsubscribe!: () => void;
-      batch(() => {
-        a.set(1);
-        unsubscribe = a.subscribe((v) => values.push(v));
-        expect(values).toEqual([1]);
-      });
+      a.set(1);
+      const unsubscribe = a.subscribe((v) => values.push(v));
+      expect(values).toEqual([1]);
+      await nextTick;
       expect(values).toEqual([1]);
       a.set(2);
+      await nextTick;
       expect(values).toEqual([1, 2]);
       unsubscribe();
     });
 
-    it('should work when doing a second subscription to a store inside batch', () => {
+    it('should work when doing a second subscription to a store inside batch', async () => {
       const a = writable(0);
       const values1: number[] = [];
       const values2: number[] = [];
       const unsubscribe1 = a.subscribe((v) => values1.push(v));
-      let unsubscribe2!: () => void;
       expect(values1).toEqual([0]);
-      batch(() => {
-        a.set(1);
-        unsubscribe2 = a.subscribe((v) => values2.push(v));
-        expect(values1).toEqual([0]);
-        expect(values2).toEqual([1]);
-      });
+      a.set(1);
+      const unsubscribe2 = a.subscribe((v) => values2.push(v));
+      expect(values1).toEqual([0]);
+      expect(values2).toEqual([1]);
+      await nextTick;
       expect(values1).toEqual([0, 1]);
       expect(values2).toEqual([1]);
       a.set(2);
+      await nextTick;
       expect(values1).toEqual([0, 1, 2]);
       expect(values2).toEqual([1, 2]);
       unsubscribe1();
       unsubscribe2();
     });
 
-    it('should work when first subscribing to a derived store inside batch', () => {
+    it('should work when first subscribing to a derived store inside batch', async () => {
       const a = writable(0);
       const b = derived(a, (a) => a + 1, -1);
       const values: number[] = [];
-      let unsubscribe!: () => void;
-      batch(() => {
-        a.set(1);
-        unsubscribe = b.subscribe((v) => values.push(v));
-        expect(values).toEqual([2]);
-      });
+      a.set(1);
+      const unsubscribe = b.subscribe((v) => values.push(v));
+      expect(values).toEqual([2]);
+      await nextTick;
       expect(values).toEqual([2]);
       a.set(2);
+      await nextTick;
       expect(values).toEqual([2, 3]);
       unsubscribe();
     });
 
-    it('should work when doing a second subscription to a derived store inside batch', () => {
+    it('should work when doing a second subscription to a derived store inside batch', async () => {
       const a = writable(0);
       const b = derived(a, (a) => a + 1);
       const values1: number[] = [];
       const values2: number[] = [];
       const unsubscribe1 = b.subscribe((v) => values1.push(v));
       expect(values1).toEqual([1]);
-      let unsubscribe2!: () => void;
-      batch(() => {
-        a.set(1);
-        unsubscribe2 = b.subscribe((v) => values2.push(v));
-        expect(values1).toEqual([1]);
-        expect(values2).toEqual([2]);
-      });
+      a.set(1);
+      const unsubscribe2 = b.subscribe((v) => values2.push(v));
+      expect(values1).toEqual([1]);
+      expect(values2).toEqual([2]);
+      await nextTick;
       expect(values1).toEqual([1, 2]);
       expect(values2).toEqual([2]);
       a.set(2);
+      await nextTick;
       expect(values1).toEqual([1, 2, 3]);
       expect(values2).toEqual([2, 3]);
       unsubscribe1();
       unsubscribe2();
     });
 
-    it('should work when doing a first subscription to a derived store of an already subscribed store inside batch', () => {
+    it('should work when doing a first subscription to a derived store of an already subscribed store inside batch', async () => {
       const a = writable(0);
       const b = derived(a, (a) => a + 1, -1);
       const values1: number[] = [];
       const values2: number[] = [];
       const unsubscribe1 = a.subscribe((v) => values1.push(v));
-      let unsubscribe2!: () => void;
       expect(values1).toEqual([0]);
-      batch(() => {
-        a.set(1);
-        unsubscribe2 = b.subscribe((v) => values2.push(v));
-        expect(values1).toEqual([0]);
-        expect(values2).toEqual([2]);
-      });
+      a.set(1);
+      const unsubscribe2 = b.subscribe((v) => values2.push(v));
+      expect(values1).toEqual([0]);
+      expect(values2).toEqual([2]);
+      await nextTick;
       expect(values1).toEqual([0, 1]);
       expect(values2).toEqual([2]);
       a.set(2);
+      await nextTick;
       expect(values1).toEqual([0, 1, 2]);
       expect(values2).toEqual([2, 3]);
       unsubscribe1();
       unsubscribe2();
     });
 
-    it('should work when doing a first subscription to a derived store of two stores with an already subscribed one inside batch', () => {
+    it('should work when doing a first subscription to a derived store of two stores with an already subscribed one inside batch', async () => {
       const a = writable(0);
       const b = writable(0);
       const c = derived([a, b], ([a, b]) => `a${a}b${b}`, 'init');
@@ -2006,27 +2081,26 @@ describe('stores', () => {
       const values2: string[] = [];
       const unsubscribe1 = a.subscribe((v) => values1.push(v));
       expect(values1).toEqual([0]);
-      let unsubscribe2!: () => void;
-      batch(() => {
-        a.set(1);
-        b.set(1);
-        unsubscribe2 = c.subscribe((v) => values2.push(v));
-        expect(values2).toEqual(['a1b1']);
-        a.set(2);
-        b.set(2);
-        expect(values1).toEqual([0]);
-        expect(values2).toEqual(['a1b1']);
-      });
+      a.set(1);
+      b.set(1);
+      const unsubscribe2 = c.subscribe((v) => values2.push(v));
+      expect(values2).toEqual(['a1b1']);
+      a.set(2);
+      b.set(2);
+      expect(values1).toEqual([0]);
+      expect(values2).toEqual(['a1b1']);
+      await nextTick;
       expect(values1).toEqual([0, 2]);
       expect(values2).toEqual(['a1b1', 'a2b2']);
       a.set(3);
+      await nextTick;
       expect(values1).toEqual([0, 2, 3]);
       expect(values2).toEqual(['a1b1', 'a2b2', 'a3b2']);
       unsubscribe1();
       unsubscribe2();
     });
 
-    it('should work with a derived store of a derived store that is paused but finally does not change', () => {
+    it('should work with a derived store of a derived store that is paused but finally does not change', async () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
@@ -2038,25 +2112,25 @@ describe('stores', () => {
       expect(values).toEqual(['b0ca0']);
       expect(cFn).toHaveBeenCalledTimes(1);
       expect(dFn).toHaveBeenCalledTimes(1);
-      batch(() => {
-        a.set(1);
-        a.set(0);
-        b.set(1);
-        expect(cFn).toHaveBeenCalledTimes(1);
-        expect(dFn).toHaveBeenCalledTimes(1);
-        expect(values).toEqual(['b0ca0']);
-      });
+      a.set(1);
+      a.set(0);
+      b.set(1);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['b0ca0']);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(1); // should not call again cFn as a went back to its initial value
       expect(dFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual(['b0ca0', 'b1ca0']);
       a.set(2);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(2);
       expect(dFn).toHaveBeenCalledTimes(3);
       expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
       unsubscribe();
     });
 
-    it('should work with a derived store of a derived store that is paused and finally changes', () => {
+    it('should work with a derived store of a derived store that is paused and finally changes', async () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
@@ -2068,26 +2142,26 @@ describe('stores', () => {
       expect(values).toEqual(['b0ca0']);
       expect(cFn).toHaveBeenCalledTimes(1);
       expect(dFn).toHaveBeenCalledTimes(1);
-      batch(() => {
-        a.set(1);
-        a.set(0);
-        b.set(1);
-        a.set(1);
-        expect(cFn).toHaveBeenCalledTimes(1);
-        expect(dFn).toHaveBeenCalledTimes(1);
-        expect(values).toEqual(['b0ca0']);
-      });
+      a.set(1);
+      a.set(0);
+      b.set(1);
+      a.set(1);
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['b0ca0']);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(2);
       expect(dFn).toHaveBeenCalledTimes(2);
       expect(values).toEqual(['b0ca0', 'b1ca1']);
       a.set(2);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(3);
       expect(dFn).toHaveBeenCalledTimes(3);
       expect(values).toEqual(['b0ca0', 'b1ca1', 'b1ca2']);
       unsubscribe();
     });
 
-    it('should work with a derived store of an async derived store that is paused but does not set any new value', () => {
+    it('should work with a derived store of an async derived store that is paused but does not set any new value', async () => {
       const a = writable(0);
       const b = writable(0);
       const cFn = jasmine
@@ -2104,65 +2178,65 @@ describe('stores', () => {
       expect(values).toEqual(['b0ca0']);
       expect(cFn).toHaveBeenCalledTimes(1);
       expect(dFn).toHaveBeenCalledTimes(1);
-      batch(() => {
-        a.set(1);
-        a.set(0);
-        a.set(1); // will be ignored by c
-        expect(cFn).toHaveBeenCalledTimes(1);
-        expect(dFn).toHaveBeenCalledTimes(1);
-        expect(values).toEqual(['b0ca0']);
-      });
+      a.set(1);
+      a.set(0);
+      a.set(1); // will be ignored by c
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(dFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['b0ca0']);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(2); // called again because a changed
       expect(dFn).toHaveBeenCalledTimes(1); // not called again because c did not change
       expect(values).toEqual(['b0ca0']);
       b.set(1);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(2); // not called again because a did not change
       expect(dFn).toHaveBeenCalledTimes(2); // called again because b changed
       expect(values).toEqual(['b0ca0', 'b1ca0']);
       a.set(2);
+      await nextTick;
       expect(cFn).toHaveBeenCalledTimes(3); // called again because a changed
       expect(dFn).toHaveBeenCalledTimes(3); // called again because c changed
       expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
       unsubscribe();
     });
 
-    it('should not call an unregistered listener', () => {
+    it('should not call an unregistered listener', async () => {
       const store = writable(0);
       const calls: number[] = [];
       const fn = (n: number) => calls.push(n);
       const unsubscribe = store.subscribe(fn);
       expect(calls).toEqual([0]);
-      batch(() => {
-        store.set(1);
-        store.set(2);
-        expect(calls).toEqual([0]);
-        unsubscribe();
-        store.set(3);
-      });
+      store.set(1);
+      store.set(2);
+      expect(calls).toEqual([0]);
+      unsubscribe();
+      store.set(3);
+      await nextTick;
       expect(calls).toEqual([0]);
     });
 
-    it('should be compatible with rxjs BehaviorSubject', () => {
+    it('should be compatible with rxjs BehaviorSubject', async () => {
       const a = new BehaviorSubject(0);
       const b = derived(a, (a: number) => a * 2);
       const values: number[] = [];
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([0]);
-      batch(() => {
-        a.next(1);
-        // note that because a is a non-tansu store, a.next(1)
-        // will immediately call the derived store which will immediately
-        // recompute its value (even inside a batch)
-        // however, b is a tansu store so it will not notify its listeners
-        // until the end of the batch
-        expect(values).toEqual([0]);
-        expect(get(b)).toEqual(2);
-        a.next(2);
-        a.next(3);
-      });
+      a.next(1);
+      // note that because a is a non-tansu store, a.next(1)
+      // will immediately call the derived store which will immediately
+      // recompute its value (even before doing await nextTick)
+      // however, b is a tansu store so it will not notify its listeners
+      // until await nextTick
+      expect(values).toEqual([0]);
+      expect(get(b)).toEqual(2);
+      a.next(2);
+      a.next(3);
+      await nextTick;
       expect(values).toEqual([0, 6]);
       unsubscribe();
       a.next(4);
+      await nextTick;
       expect(values).toEqual([0, 6]);
     });
   });
@@ -2191,17 +2265,16 @@ describe('stores', () => {
       return obj;
     }
 
-    it(`don't call unnecessary listener`, () => {
+    it(`don't call unnecessary listener`, async () => {
       const a = writable(0);
       const b = getObservedDerived(a, (value) => value, 1);
       expect(b.values).toEqual([0]);
       expect(b.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(1);
-      });
+      a.set(1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
+      await nextTick;
 
       expect(b.values).toEqual([0, 1]);
       expect(b.calls).toBe(2);
@@ -2209,7 +2282,7 @@ describe('stores', () => {
       b.unsubscribe();
     });
 
-    it(`don't call unnecessary related listeners`, () => {
+    it(`don't call unnecessary related listeners`, async () => {
       const a = writable(0);
       const b = getObservedDerived(a, (value) => value, 1);
       expect(b.values).toEqual([0]);
@@ -2219,14 +2292,14 @@ describe('stores', () => {
       expect(c.values).toEqual([0]);
       expect(c.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
+      a.set(1);
 
-        get(b.store);
+      get(b.store);
 
-        expect(c.values).toEqual([0]);
-        expect(c.calls).toEqual(1);
-      });
+      expect(c.values).toEqual([0]);
+      expect(c.calls).toEqual(1);
+
+      await nextTick;
 
       expect(b.values).toEqual([0, 1]);
       expect(b.calls).toBe(2);
@@ -2238,18 +2311,18 @@ describe('stores', () => {
       c.unsubscribe();
     });
 
-    it(`called in batch if necessary`, () => {
+    it(`called in batch if necessary`, async () => {
       const a = writable(0);
       const b = getObservedDerived(a, (value) => value, 0);
       expect(b.values).toEqual([0]);
       expect(b.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
-        expect(get(b.store)).withContext('get the latest value').toEqual(1);
-        expect(b.calls).toEqual(2);
-        expect(b.values).withContext('outside listener not called').toEqual([0]);
-      });
+      a.set(1);
+      expect(get(b.store)).withContext('get the latest value').toEqual(1);
+      expect(b.calls).toEqual(2);
+      expect(b.values).withContext('outside listener not called').toEqual([0]);
+
+      await nextTick;
 
       expect(b.values).toEqual([0, 1]);
       expect(b.calls).toBe(2);
@@ -2257,20 +2330,20 @@ describe('stores', () => {
       b.unsubscribe();
     });
 
-    it(`back and forth of original value`, () => {
+    it(`back and forth of original value`, async () => {
       const a = writable(0);
       const b = getObservedDerived(a, (value) => value, 0);
       expect(b.values).toEqual([0]);
       expect(b.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
-        expect(get(b.store)).toEqual(1);
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(2);
+      a.set(1);
+      expect(get(b.store)).toEqual(1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(2);
 
-        a.set(0);
-      });
+      a.set(0);
+
+      await nextTick;
 
       expect(b.values).toEqual([0]);
       expect(b.calls).toEqual(3);
@@ -2278,23 +2351,23 @@ describe('stores', () => {
       b.unsubscribe();
     });
 
-    it(`skip intermediate values`, () => {
+    it(`skip intermediate values`, async () => {
       const a = writable(0);
       const b = getObservedDerived(a, (value) => value, 0);
       expect(b.values).toEqual([0]);
       expect(b.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
-        expect(get(b.store)).toEqual(1);
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(2);
+      a.set(1);
+      expect(get(b.store)).toEqual(1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(2);
 
-        a.set(2);
-        expect(get(b.store)).toEqual(2);
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(3);
-      });
+      a.set(2);
+      expect(get(b.store)).toEqual(2);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(3);
+
+      await nextTick;
 
       expect(b.values).toEqual([0, 2]);
       expect(b.calls).toEqual(3);
@@ -2302,7 +2375,7 @@ describe('stores', () => {
       b.unsubscribe();
     });
 
-    it(`derived store dependency`, () => {
+    it(`derived store dependency`, async () => {
       const a = writable(0);
 
       const b = getObservedDerived(a, (value) => value, 0);
@@ -2313,22 +2386,22 @@ describe('stores', () => {
       expect(c.values).toEqual([0]);
       expect(c.calls).toEqual(1);
 
-      batch(() => {
-        a.set(1);
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(1);
+      a.set(1);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(1);
 
-        expect(c.values).toEqual([0]);
-        expect(c.calls).toEqual(1);
+      expect(c.values).toEqual([0]);
+      expect(c.calls).toEqual(1);
 
-        expect(get(c.store)).toEqual(2);
+      expect(get(c.store)).toEqual(2);
 
-        expect(b.values).toEqual([0]);
-        expect(b.calls).toEqual(2);
+      expect(b.values).toEqual([0]);
+      expect(b.calls).toEqual(2);
 
-        expect(c.values).toEqual([0]);
-        expect(c.calls).toEqual(2);
-      });
+      expect(c.values).toEqual([0]);
+      expect(c.calls).toEqual(2);
+
+      await nextTick;
 
       expect(b.values).toEqual([0, 1]);
       expect(b.calls).toBe(2);
