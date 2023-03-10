@@ -79,7 +79,11 @@ export interface UnsubscribeObject {
   unsubscribe: UnsubscribeFunction;
 }
 
-export type Unsubscriber = UnsubscribeObject | UnsubscribeFunction;
+export interface HasUpdate {
+  update: () => void;
+}
+
+export type Unsubscriber = (UnsubscribeObject | UnsubscribeFunction) & Partial<HasUpdate>;
 
 /**
  * Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change.
@@ -113,7 +117,7 @@ export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
  * For {@link https://rxjs.dev/api/index/interface/InteropObservable | interoperability with rxjs}, it also implements the `[Symbol.observable]` method.
  */
 export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> {
-  subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject;
+  subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject & HasUpdate;
   [Symbol.observable](): Readable<T>;
 }
 
@@ -153,6 +157,7 @@ const noop = () => {};
 
 const noopUnsubscribe = () => {};
 noopUnsubscribe.unsubscribe = noopUnsubscribe;
+noopUnsubscribe.update = noop;
 
 const bind = <T>(object: T | null | undefined, fnName: keyof T) => {
   const fn = object ? object[fnName] : null;
@@ -184,16 +189,17 @@ const returnThis = function <T>(this: T): T {
 
 const normalizeUnsubscribe = (
   unsubscribe: Unsubscriber | void | null | undefined
-): UnsubscribeFunction & UnsubscribeObject => {
+): UnsubscribeFunction & UnsubscribeObject & HasUpdate => {
   if (!unsubscribe) {
     return noopUnsubscribe;
   }
-  if ((unsubscribe as any).unsubscribe === unsubscribe) {
+  if ((unsubscribe as any).unsubscribe === unsubscribe && unsubscribe.update) {
     return unsubscribe as any;
   }
   const res: any =
     typeof unsubscribe === 'function' ? () => unsubscribe() : () => unsubscribe.unsubscribe();
   res.unsubscribe = res;
+  res.update = () => unsubscribe.update?.();
   return res;
 };
 
@@ -222,7 +228,6 @@ export function asReadable<T>(input: StoreInput<T>): Readable<T> {
   };
 }
 
-const triggerUpdate = Symbol();
 const queueProcess = Symbol();
 let willProcessQueue = false;
 const queue = new Set<{ [queueProcess](): void }>();
@@ -358,7 +363,7 @@ const createNotEqualCache = (valueIndex: number): Record<number, boolean> => ({
  */
 export abstract class Store<T> implements Readable<T> {
   #subscribers = new Set<PrivateSubscriberObject<T>>();
-  #cleanupFn: null | UnsubscribeFunction = null;
+  #cleanupFn: null | (UnsubscribeFunction & Partial<HasUpdate>) = null;
   #subscribersPaused = false;
   #valueIndex = 1;
   #value: T;
@@ -403,7 +408,7 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   #triggerUpdate(): void {
-    (this.#cleanupFn as any)?.[triggerUpdate]?.();
+    this.#cleanupFn?.update?.();
   }
 
   #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
@@ -547,7 +552,7 @@ export abstract class Store<T> implements Readable<T> {
    * Default Implementation of the {@link SubscribableStore.subscribe}, not meant to be overridden.
    * @param subscriber - see {@link SubscribableStore.subscribe}
    */
-  subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
+  subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject & HasUpdate {
     const subscriberObject = toSubscriberObject(subscriber);
     this.#subscribers.add(subscriberObject);
     batch(() => {
@@ -568,7 +573,7 @@ export abstract class Store<T> implements Readable<T> {
         this.#stop();
       }
     };
-    (unsubscribe as any)[triggerUpdate] = () => {
+    unsubscribe.update = () => {
       this.#triggerUpdate();
       this.#notifySubscriber(subscriberObject);
     };
@@ -848,10 +853,10 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     };
     const triggerSubscriberPendingUpdate = (unsubscriber: any, idx: number) => {
       if (this.#pending & (1 << idx)) {
-        unsubscriber[triggerUpdate]?.();
+        unsubscriber.update?.();
       }
     };
-    (clean as any)[triggerUpdate] = () => {
+    clean.update = () => {
       let iterations = 0;
       while (this.#pending) {
         checkIterations(++iterations);
@@ -867,7 +872,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     };
     clean.unsubscribe = clean;
     callDerive(true);
-    (clean as any)[triggerUpdate]();
+    clean.update();
     return clean;
   }
 
