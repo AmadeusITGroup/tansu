@@ -634,11 +634,11 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
     super(value);
   }
 
-  set(value: T): void {
+  override set(value: T): void {
     super.set(value);
   }
 
-  update(updater: Updater<T>) {
+  override update(updater: Updater<T>) {
     super.update(updater);
   }
 }
@@ -772,7 +772,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     this.#stores = (isArray ? [...stores] : [stores]).map(asReadable);
   }
 
-  protected resumeSubscribers(): void {
+  protected override resumeSubscribers(): void {
     if (!this.#pending) {
       // only resume subscribers if we know that the values of the stores with which
       // the derived function was called were the correct ones
@@ -780,7 +780,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
     }
   }
 
-  protected onUse(): Unsubscriber | void {
+  protected override onUse(): Unsubscriber | void {
     let initDone = false;
     let changed = 0;
 
@@ -908,12 +908,12 @@ export function derived<T, S extends StoresInput>(
   const { derive, ...opts } = options;
   const Derived = isSyncDeriveFn(derive)
     ? class extends DerivedStore<T, S> {
-        protected derive(values: StoresInputValues<S>) {
+        protected override derive(values: StoresInputValues<S>) {
           this.set(derive(values));
         }
       }
     : class extends DerivedStore<T, S> {
-        protected derive(values: StoresInputValues<S>) {
+        protected override derive(values: StoresInputValues<S>) {
           const setFn = (v: T) => this.set(v);
           setFn.set = setFn;
           setFn.update = (updater: Updater<T>) => this.update(updater);

@@ -5,6 +5,7 @@
     "target": "ES2022",
     "moduleResolution": "Node",
     "strict": true,
+    "noImplicitOverride": true,
     "useDefineForClassFields": false
   }
 }

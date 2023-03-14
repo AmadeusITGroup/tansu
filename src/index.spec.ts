@@ -73,11 +73,11 @@ describe('stores', () => {
         constructor(public readonly modulo: number, initialValue: number) {
           super(initialValue);
         }
-        protected notEqual(a: number, b: number): boolean {
+        protected override notEqual(a: number, b: number): boolean {
           notEqualCalls.push([a, b]);
           return a % this.modulo !== b % this.modulo;
         }
-        set(value: number) {
+        override set(value: number) {
           super.set(value);
         }
       }
@@ -178,7 +178,7 @@ describe('stores', () => {
           super(0);
         }
 
-        onUse() {
+        override onUse() {
           firstSubscribeCount++;
         }
       }
@@ -209,7 +209,7 @@ describe('stores', () => {
           super(0);
         }
 
-        onUse() {
+        override onUse() {
           counters.sub++;
           return () => counters.unsub++;
         }
@@ -233,11 +233,11 @@ describe('stores', () => {
 
     it('should notify with the value set in onUse to the first subscriber', () => {
       class MyStore extends Store<string> {
-        onUse() {
+        override onUse() {
           this.set('from onUse');
         }
 
-        update() {
+        override update() {
           this.set('updated');
         }
       }
@@ -349,13 +349,13 @@ describe('stores', () => {
 
     it('should not call again listeners when only resuming subscribers', () => {
       class BasicStore extends Store<object> {
-        public pauseSubscribers(): void {
+        public override pauseSubscribers(): void {
           super.pauseSubscribers();
         }
-        public resumeSubscribers(): void {
+        public override resumeSubscribers(): void {
           super.resumeSubscribers();
         }
-        public set(value: object): void {
+        public override set(value: object): void {
           super.set(value);
         }
       }
@@ -533,7 +533,7 @@ describe('stores', () => {
         increment() {
           this.update((value) => value + 1);
         }
-        protected onUse() {
+        protected override onUse() {
           this.hasListeners = true;
           return () => {
             this.hasListeners = false;
