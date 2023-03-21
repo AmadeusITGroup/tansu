@@ -945,17 +945,17 @@ export function derived<T, S extends StoresInput>(
   stores: S,
   options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>,
   initialValue: T
-): Readable<T>;
+): ReadableSignal<T>;
 export function derived<T, S extends StoresInput>(
   stores: S,
   options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>,
   initialValue?: T
-): Readable<T>;
+): ReadableSignal<T>;
 export function derived<T, S extends StoresInput>(
   stores: S,
   options: DeriveFn<T, S> | DeriveOptions<T, S>,
   initialValue?: T
-): Readable<T> {
+): ReadableSignal<T> {
   if (typeof options === 'function') {
     options = { derive: options };
   }
