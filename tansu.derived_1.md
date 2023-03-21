@@ -7,7 +7,7 @@
 **Signature:**
 
 ```typescript
-export declare function derived<T, S extends StoresInput>(stores: S, options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>, initialValue?: T): Readable<T>;
+export declare function derived<T, S extends StoresInput>(stores: S, options: SyncDeriveFn<T, S> | SyncDeriveOptions<T, S>, initialValue?: T): ReadableSignal<T>;
 ```
 
 ## Parameters
@@ -20,5 +20,5 @@ export declare function derived<T, S extends StoresInput>(stores: S, options: Sy
 
 **Returns:**
 
-[Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
+[ReadableSignal](./tansu.readablesignal.md)<!-- -->&lt;T&gt;
 

@@ -9,7 +9,7 @@ A convenience function to create a new store with a state computed from the late
 **Signature:**
 
 ```typescript
-export declare function derived<T, S extends StoresInput>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): Readable<T>;
+export declare function derived<T, S extends StoresInput>(stores: S, options: AsyncDeriveFn<T, S> | AsyncDeriveOptions<T, S>, initialValue: T): ReadableSignal<T>;
 ```
 
 ## Parameters
@@ -22,7 +22,7 @@ export declare function derived<T, S extends StoresInput>(stores: S, options: As
 
 **Returns:**
 
-[Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
+[ReadableSignal](./tansu.readablesignal.md)<!-- -->&lt;T&gt;
 
 ## Example
 
