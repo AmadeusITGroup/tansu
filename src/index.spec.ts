@@ -2445,6 +2445,25 @@ describe('stores', () => {
       expect(multiply).toHaveBeenCalledTimes(2);
     });
 
+    it('should allow retrieving the value with get', () => {
+      const a = writable(1);
+      const b = writable(2);
+      const multiply = jasmine
+        .createSpy('multiply', () => get(a) * untrack(() => get(b)))
+        .and.callThrough();
+      const c = computed(multiply);
+      expect(multiply).not.toHaveBeenCalled();
+      expect(get(c)).toEqual(2);
+      expect(multiply).toHaveBeenCalledTimes(1);
+      b.set(3);
+      expect(get(c)).toEqual(2); // should not have been recomputed, as b is untracked
+      expect(multiply).toHaveBeenCalledTimes(1);
+      a.set(2);
+      expect(multiply).toHaveBeenCalledTimes(1); // not yet requested, should not have computed yet
+      expect(get(c)).toEqual(6); // now that it is recomputed, use the new b value
+      expect(multiply).toHaveBeenCalledTimes(2);
+    });
+
     it('should not recompute (with get) if dependent stores did not change', () => {
       const a = writable(1);
       const double = jasmine.createSpy('double', () => a() * 2).and.callThrough();
