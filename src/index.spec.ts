@@ -924,6 +924,19 @@ describe('stores', () => {
       expect(get(multiplyStore)).toBe(14);
     });
 
+    it('should allow calling a derived store as a function', () => {
+      const numbersStore = writable(0);
+      const multiplyStore = derived([numbersStore], (values) => values[0] * 2);
+
+      expect(multiplyStore()).toBe(0);
+
+      numbersStore.set(5);
+      expect(multiplyStore()).toBe(10);
+
+      numbersStore.set(7);
+      expect(multiplyStore()).toBe(14);
+    });
+
     it('should support an option object from derived shorthand', () => {
       const numbersStore = writable(0);
       const multiplyStore = derived([numbersStore], { derive: (values) => values[0] * 2 });
