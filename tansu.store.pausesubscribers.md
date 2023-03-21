@@ -17,7 +17,7 @@ void
 
 ## Remarks
 
-The paused state prevents derived stores (both direct and transitive) from recomputing their value using the current value of this store.
+The paused state prevents derived or computed stores (both direct and transitive) from recomputing their value using the current value of this store.
 
 There are two ways to put a store back into its normal state: calling [set](./tansu.store.set.md) to set a new value or calling [resumeSubscribers](./tansu.store.resumesubscribers.md) to declare that finally the value does not need to be changed.
 

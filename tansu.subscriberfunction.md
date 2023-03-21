@@ -9,5 +9,7 @@ A callback invoked when a store value changes. It is called with the latest valu
 **Signature:**
 
 ```typescript
-export type SubscriberFunction<T> = (value: T) => void;
+export type SubscriberFunction<T> = ((value: T) => void) & Partial<Omit<SubscriberObject<T>, 'next'>>;
 ```
+**References:** [SubscriberObject](./tansu.subscriberobject.md)
+

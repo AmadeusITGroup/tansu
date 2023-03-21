@@ -17,10 +17,10 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 
 |  Function | Description |
 |  --- | --- |
-|  [asReadable(input)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [Readable](./tansu.readable.md) and exposes the store as read-only. |
+|  [asReadable(store, extraProp)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [ReadableSignal](./tansu.readablesignal.md) and exposes the store as read-only. |
+|  [computed(fn, options)](./tansu.computed.md) | Creates a store whose value is computed by the provided function. |
 |  [derived(stores, options, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
 |  [derived(stores, options, initialValue)](./tansu.derived_1.md) |  |
-|  [get(store)](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |
 |  [readable(value, options)](./tansu.readable.md) | A convenience function to create [Readable](./tansu.readable.md) store instances. |
 |  [writable(value, options)](./tansu.writable.md) | A convenience function to create [Writable](./tansu.writable.md) store instances. |
 
@@ -31,18 +31,22 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  [InteropObservable](./tansu.interopobservable.md) | An interface for interoperability between observable implementations. It only has to expose the <code>[Symbol.observable]</code> method that is supposed to return a subscribable store. |
 |  [OnUseArgument](./tansu.onuseargument.md) |  |
 |  [Readable](./tansu.readable.md) | This interface augments the base [SubscribableStore](./tansu.subscribablestore.md) interface by requiring the return value of the subscribe method to be both a function and an object with the <code>unsubscribe</code> method. For [interoperability with rxjs](https://rxjs.dev/api/index/interface/InteropObservable)<!-- -->, it also implements the <code>[Symbol.observable]</code> method. |
+|  [ReadableSignal](./tansu.readablesignal.md) | This interface augments the base [Readable](./tansu.readable.md) interface by adding the ability to call the store as a function to get its value. |
 |  [StoreOptions](./tansu.storeoptions.md) | Store options that can be passed to [readable()](./tansu.readable.md) or [writable()](./tansu.writable.md)<!-- -->. |
 |  [SubscribableStore](./tansu.subscribablestore.md) | Represents a store accepting registrations (subscribers) and "pushing" notifications on each and every store value change. |
 |  [SubscriberObject](./tansu.subscriberobject.md) | A partial [observer](https://github.com/tc39/proposal-observable#api) notified when a store value changes. A store will call the [next](./tansu.subscriberobject.next.md) method every time the store's state is changing. |
 |  [UnsubscribeObject](./tansu.unsubscribeobject.md) | An object with the <code>unsubscribe</code> method. Subscribable stores might choose to return such object instead of directly returning [UnsubscribeFunction](./tansu.unsubscribefunction.md) from a subscription call. |
 |  [Writable](./tansu.writable.md) | Builds on top of [Readable](./tansu.readable.md) and represents a store that can be manipulated from "outside": anyone with a reference to writable store can either update or completely replace state of a given store. |
+|  [WritableSignal](./tansu.writablesignal.md) | Represents a store that implements both [ReadableSignal](./tansu.readablesignal.md) and [Writable](./tansu.writable.md)<!-- -->. This is the type of objects returned by [writable()](./tansu.writable.md)<!-- -->. |
 
 ## Variables
 
 |  Variable | Description |
 |  --- | --- |
 |  [batch](./tansu.batch.md) | Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. |
+|  [get](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |
 |  [symbolObservable](./tansu.symbolobservable.md) | Symbol used in [InteropObservable](./tansu.interopobservable.md) allowing any object to expose an observable. |
+|  [untrack](./tansu.untrack.md) | Stops the tracking of dependencies made by [computed()](./tansu.computed.md) and calls the provided function. After the function returns, the tracking of dependencies continues as before. |
 
 ## Type Aliases
 

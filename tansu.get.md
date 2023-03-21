@@ -2,25 +2,15 @@
 
 [Home](./index.md) &gt; [@amadeus-it-group/tansu](./tansu.md) &gt; [get](./tansu.get.md)
 
-## get() function
+## get variable
 
 A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after.
 
 **Signature:**
 
 ```typescript
-export declare function get<T>(store: StoreInput<T>): T;
+get: <T>(store: StoreInput<T>) => T
 ```
-
-## Parameters
-
-|  Parameter | Type | Description |
-|  --- | --- | --- |
-|  store | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; | a store from which the current value is retrieved. |
-
-**Returns:**
-
-T
 
 ## Example
 

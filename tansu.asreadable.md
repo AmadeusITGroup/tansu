@@ -4,23 +4,24 @@
 
 ## asReadable() function
 
-Returns a wrapper (for the given store) which only exposes the [Readable](./tansu.readable.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [Readable](./tansu.readable.md) and exposes the store as read-only.
+Returns a wrapper (for the given store) which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [ReadableSignal](./tansu.readablesignal.md) and exposes the store as read-only.
 
 **Signature:**
 
 ```typescript
-export declare function asReadable<T>(input: StoreInput<T>): Readable<T>;
+export declare function asReadable<T, U = object>(store: StoreInput<T>, extraProp?: U): ReadableSignal<T> & U;
 ```
 
 ## Parameters
 
 |  Parameter | Type | Description |
 |  --- | --- | --- |
-|  input | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; |  |
+|  store | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; | store to wrap |
+|  extraProp | U | _(Optional)_ extra properties to add on the returned object |
 
 **Returns:**
 
-[Readable](./tansu.readable.md)<!-- -->&lt;T&gt;
+[ReadableSignal](./tansu.readablesignal.md)<!-- -->&lt;T&gt; &amp; U
 
-A wrapper which only exposes the [Readable](./tansu.readable.md) interface.
+A wrapper which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface.
 
