@@ -9,7 +9,7 @@ Returns a wrapper (for the given store) which only exposes the [ReadableSignal](
 **Signature:**
 
 ```typescript
-export declare function asReadable<T, U = object>(store: StoreInput<T>, extraProp?: U): ReadableSignal<T> & U;
+export declare function asReadable<T>(store: StoreInput<T>): ReadableSignal<T>;
 ```
 
 ## Parameters
@@ -17,11 +17,10 @@ export declare function asReadable<T, U = object>(store: StoreInput<T>, extraPro
 |  Parameter | Type | Description |
 |  --- | --- | --- |
 |  store | [StoreInput](./tansu.storeinput.md)<!-- -->&lt;T&gt; | store to wrap |
-|  extraProp | U | _(Optional)_ extra properties to add on the returned object |
 
 **Returns:**
 
-[ReadableSignal](./tansu.readablesignal.md)<!-- -->&lt;T&gt; &amp; U
+[ReadableSignal](./tansu.readablesignal.md)<!-- -->&lt;T&gt;
 
 A wrapper which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface.
 
