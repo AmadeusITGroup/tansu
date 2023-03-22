@@ -239,13 +239,25 @@ const getValue = <T>(subscribe: Readable<T>['subscribe']): T => {
  * This converts any {@link StoreInput} to a {@link ReadableSignal} and exposes the store as read-only.
  *
  * @param store - store to wrap
- * @param extraProp - extra properties to add on the returned object
  * @returns A wrapper which only exposes the {@link ReadableSignal} interface.
  */
-export function asReadable<T, U = object>(
+export function asReadable<T>(store: StoreInput<T>): ReadableSignal<T>;
+/**
+ * Returns a wrapper (for the given store) which only exposes the {@link ReadableSignal} interface and
+ * also adds the given extra properties on the returned object.
+ *
+ * @param store - store to wrap
+ * @param extraProp - extra properties to add on the returned object
+ * @returns A wrapper which only exposes the {@link ReadableSignal} interface and the given extra properties.
+ */
+export function asReadable<T, U>(
+  store: StoreInput<T>,
+  extraProp: U
+): ReadableSignal<T> & Omit<U, keyof Readable<T>>;
+export function asReadable<T, U>(
   store: StoreInput<T>,
   extraProp?: U
-): ReadableSignal<T> & U {
+): ReadableSignal<T> & Omit<U, keyof Readable<T>> {
   const subscribe = getNormalizedSubscribe(store);
   const res = Object.assign(() => get(res), extraProp, {
     subscribe,

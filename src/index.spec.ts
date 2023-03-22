@@ -14,6 +14,7 @@ import {
   SubscriberObject,
   computed,
   untrack,
+  ReadableSignal,
 } from './index';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
@@ -448,6 +449,24 @@ describe('stores', () => {
       const readable1 = writable(5);
       const readable2 = asReadable(readable1);
       expect(readable1.subscribe).toBe(readable2.subscribe);
+    });
+
+    it('asReadable should work nicely as a return value of a function whose type is explicitly defined', () => {
+      interface Counter extends ReadableSignal<number> {
+        increment(): void;
+      }
+      const createCounter = (): Counter => {
+        const store = writable(0);
+        return asReadable(store, {
+          increment() {
+            store.update((value) => value + 1);
+          },
+        });
+      };
+      const counter = createCounter();
+      expect(counter()).toBe(0);
+      counter.increment();
+      expect(counter()).toBe(1);
     });
 
     it('get should be compatible with rxjs (InteropObservable)', () => {
