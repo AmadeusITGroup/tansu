@@ -361,11 +361,11 @@ let reactiveContext = defaultReactiveContext;
  */
 export const get = <T>(store: StoreInput<T>): T => reactiveContext(store);
 
-const createNotEqualCache = (valueIndex: number): Record<number, boolean> => ({
-  [valueIndex]: false, // the subscriber already has the last value
-  [valueIndex - 1]: true, // the subscriber had the previous value,
+const createEqualCache = (valueIndex: number): Record<number, boolean> => ({
+  [valueIndex]: true, // the subscriber already has the last value
+  [valueIndex - 1]: false, // the subscriber had the previous value,
   // which is known to be different because notEqual is called in the set method
-  0: true, // the subscriber never received any value
+  0: false, // the subscriber never received any value
 });
 
 /**
@@ -405,7 +405,7 @@ export abstract class Store<T> implements Readable<T> {
   #subscribersPaused = false;
   #valueIndex = 1;
   #value: T;
-  #notEqualCache = createNotEqualCache(1);
+  #equalCache = createEqualCache(1);
   #oldSubscriptions = new WeakMap<Unsubscriber, PrivateSubscriberObject<T>>();
 
   /**
@@ -450,16 +450,16 @@ export abstract class Store<T> implements Readable<T> {
   protected [triggerUpdate](): void {}
 
   #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
-    const notEqualCache = this.#notEqualCache;
+    const equalCache = this.#equalCache;
     const valueIndex = this.#valueIndex;
     const value = this.#value;
-    let different = notEqualCache[subscriber._valueIndex];
-    if (different == null) {
-      different = this.notEqual(subscriber._value, value);
-      notEqualCache[subscriber._valueIndex] = different;
+    let equal = equalCache[subscriber._valueIndex];
+    if (equal == null) {
+      equal = this.equal(subscriber._value, value);
+      equalCache[subscriber._valueIndex] = equal;
     }
     subscriber._valueIndex = valueIndex;
-    if (different) {
+    if (!equal) {
       subscriber._value = value;
       subscriber._paused = false;
       subscriber.next(value);
@@ -470,6 +470,27 @@ export abstract class Store<T> implements Readable<T> {
   }
 
   /**
+   * Compares two values and returns true if they are equal.
+   * It is called when setting a new value to avoid doing anything
+   * (such as notifying subscribers) if the value did not change.
+   * The default logic is to return false if `a` is a function or an object,
+   * or if `a` and `b` are different according to `Object.is`.
+   * This method can be overridden by subclasses to change the logic.
+   *
+   * @remarks
+   * For backward compatibility, the default implementation calls the
+   * deprecated {@link Store.notEqual} method and returns the negation
+   * of its return value.
+   *
+   * @param a - First value to compare.
+   * @param b - Second value to compare.
+   * @returns true if a and b are considered equal.
+   */
+  protected equal(a: T, b: T): boolean {
+    return !this.notEqual(a, b);
+  }
+
+  /**
    * Compares two values and returns true if they are different.
    * It is called when setting a new value to avoid doing anything
    * (such as notifying subscribers) if the value did not change.
@@ -477,6 +498,12 @@ export abstract class Store<T> implements Readable<T> {
    * or if `a` and `b` are different according to `Object.is`.
    * This method can be overridden by subclasses to change the logic.
    *
+   * @remarks
+   * This method is only called by the default implementation of
+   * {@link Store.equal}, so overriding {@link Store.equal} takes
+   * precedence over overriding notEqual.
+   *
+   * @deprecated Use {@link Store.equal} instead
    * @param a - First value to compare.
    * @param b - Second value to compare.
    * @returns true if a and b are considered different.
@@ -540,11 +567,11 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    if (this.notEqual(this.#value, value)) {
+    if (!this.equal(this.#value, value)) {
       const valueIndex = this.#valueIndex + 1;
       this.#valueIndex = valueIndex;
       this.#value = value;
-      this.#notEqualCache = createNotEqualCache(valueIndex);
+      this.#equalCache = createEqualCache(valueIndex);
       this.pauseSubscribers();
     }
     this.resumeSubscribers();
@@ -661,6 +688,25 @@ export interface StoreOptions<T> {
 
   /**
    * Custom function to compare two values, that should return true if they
+   * are equal.
+   * It is called when setting a new value to avoid doing anything
+   * (such as notifying subscribers) if the value did not change.
+   * The default logic (when this option is not present) is to return false
+   * if `a` is a function or an object, or if `a` and `b` are different
+   * according to `Object.is`.
+   *
+   * @remarks
+   * equal takes precedence over {@link StoreOptions.notEqual} if both
+   * are defined.
+   *
+   * @param a - First value to compare.
+   * @param b - Second value to compare.
+   * @returns true if a and b are considered equal.
+   */
+  equal?: (a: T, b: T) => boolean;
+
+  /**
+   * Custom function to compare two values, that should return true if they
    * are different.
    * It is called when setting a new value to avoid doing anything
    * (such as notifying subscribers) if the value did not change.
@@ -668,6 +714,11 @@ export interface StoreOptions<T> {
    * if `a` is a function or an object, or if `a` and `b` are different
    * according to `Object.is`.
    *
+   * @remarks
+   * {@link StoreOptions.equal} takes precedence over notEqual if both
+   * are defined.
+   *
+   * @deprecated Use {@link StoreOptions.equal} instead
    * @param a - First value to compare.
    * @param b - Second value to compare.
    * @returns true if a and b are considered different.
@@ -706,13 +757,18 @@ class WritableStore<T> extends Store<T> implements Writable<T> {
 }
 
 const applyStoreOptions = <T, S extends Store<T>>(store: S, options: StoreOptions<T>): S => {
-  const { onUse, notEqual } = options;
+  const { onUse, equal, notEqual } = options;
   if (onUse) {
     (store as any).onUse = function (this: Store<T>) {
       const setFn = (v: T) => this.set(v);
       setFn.set = setFn;
       setFn.update = (updater: Updater<T>) => this.update(updater);
       return onUse(setFn);
+    };
+  }
+  if (equal) {
+    (store as any).equal = function (this: Store<T>, a: T, b: T) {
+      return equal(a, b);
     };
   }
   if (notEqual) {
