@@ -54,15 +54,13 @@ const customSimpleWritable = <T>(
   };
 };
 
-const notObjectIs = (a: any, b: any): boolean => !Object.is(a, b);
-
 const switchMap = <S extends StoresInput, U>(
   store: S,
   fn: (value: StoresInputValues<S>) => StoreInput<U>,
   options?: Omit<StoreOptions<U>, 'onUse'>
 ): Readable<U> =>
   derived(
-    derived(store, { notEqual: notObjectIs, derive: (value) => fn(value) }),
+    derived(store, { equal: Object.is, derive: (value) => fn(value) }),
     { ...options, derive: (store, set) => asReadable(store).subscribe(set) },
     undefined as U
   );
@@ -77,6 +75,66 @@ describe('stores', () => {
       store.subscribe((v) => (defValue = v));
 
       expect(defValue).toBe('Hello, World');
+    });
+
+    it('should allow overriding equal', () => {
+      const equalCalls: [number, number][] = [];
+      class ModuloStore extends Store<number> {
+        constructor(public readonly modulo: number, initialValue: number) {
+          super(initialValue);
+        }
+        protected override equal(a: number, b: number): boolean {
+          equalCalls.push([a, b]);
+          return a % this.modulo === b % this.modulo;
+        }
+        override set(value: number) {
+          super.set(value);
+        }
+      }
+      const modulo10 = new ModuloStore(10, 1); // two numbers are considered equal if the last digit is the same
+      const changes: number[] = [];
+      modulo10.subscribe((value) => changes.push(value));
+      modulo10.set(11); // no change
+      expect(get(modulo10)).toEqual(1);
+      modulo10.set(14);
+      expect(get(modulo10)).toEqual(14);
+      modulo10.set(4); // no change
+      expect(get(modulo10)).toEqual(14);
+      modulo10.set(11);
+      expect(get(modulo10)).toEqual(11);
+      modulo10.set(2);
+      expect(get(modulo10)).toEqual(2);
+      const changes2: number[] = [];
+      const changes3: number[] = [];
+      batch(() => {
+        modulo10.set(3);
+        expect(get(modulo10)).toEqual(3);
+        modulo10.set(4);
+        expect(get(modulo10)).toEqual(4);
+        modulo10.subscribe((value) => changes2.push(value));
+        modulo10.subscribe((value) => changes3.push(value));
+        modulo10.set(5);
+        expect(get(modulo10)).toEqual(5);
+        modulo10.set(2);
+      });
+      expect(changes2).toEqual([4, 2]);
+      expect(changes3).toEqual([4, 2]);
+      expect(changes).toEqual([1, 14, 11, 2]);
+      expect(equalCalls).toEqual([
+        [1, 11],
+        [1, 14],
+        [14, 4],
+        [14, 11],
+        [11, 2],
+        // inside batch:
+        [2, 3],
+        [3, 4],
+        [4, 5],
+        [5, 2],
+        // leaving batch:
+        [2, 2],
+        [4, 2], // this is done once, even though 2 subscribers need it
+      ]);
     });
 
     it('should allow overriding notEqual', () => {
@@ -685,6 +743,28 @@ describe('stores', () => {
       expect(get(store)).toBe(1);
     });
 
+    it('should accept an options object with onUse and equal properties', () => {
+      const equalCalls: [number, number][] = [];
+      const store = readable(-1, {
+        onUse({ set, update }) {
+          expect(this).toBeFalsy();
+          set(0);
+          update((v) => v + 1);
+        },
+        equal(a, b) {
+          expect(this).toBeFalsy();
+          equalCalls.push([a, b]);
+          return true;
+        },
+      });
+
+      expect(get(store)).toBe(-1);
+      expect(equalCalls).toEqual([
+        [-1, 0],
+        [-1, 0],
+      ]);
+    });
+
     it('should accept an options object with onUse and notEqual properties', () => {
       const notEqualCalls: [number, number][] = [];
       const store = readable(-1, {
@@ -762,6 +842,28 @@ describe('stores', () => {
       expect(get(store)).toBe(1);
     });
 
+    it('should accept an options object with onUse and equal properties', () => {
+      const equalCalls: [number, number][] = [];
+      const store = writable(-1, {
+        onUse({ set, update }) {
+          expect(this).toBeFalsy();
+          set(0);
+          update((v) => v + 1);
+        },
+        equal(a, b) {
+          expect(this).toBeFalsy();
+          equalCalls.push([a, b]);
+          return true;
+        },
+      });
+
+      expect(get(store)).toBe(-1);
+      expect(equalCalls).toEqual([
+        [-1, 0],
+        [-1, 0],
+      ]);
+    });
+
     it('should accept an options object with onUse and notEqual properties', () => {
       const notEqualCalls: [number, number][] = [];
       const store = writable(-1, {
@@ -801,6 +903,31 @@ describe('stores', () => {
       expect(called).toBe(2);
 
       store.update((obj) => obj);
+      expect(called).toBe(3);
+    });
+
+    it('should allow overriding equal for immutable data', () => {
+      const obj = {};
+      let called = 0;
+
+      const store = writable(obj, { equal: Object.is });
+
+      store.subscribe(() => {
+        called += 1;
+      });
+
+      expect(called).toBe(1);
+
+      store.set(obj);
+      expect(called).toBe(1);
+
+      store.update((obj) => obj);
+      expect(called).toBe(1);
+
+      store.set({ ...obj });
+      expect(called).toBe(2);
+
+      store.update((obj) => ({ ...obj }));
       expect(called).toBe(3);
     });
 
@@ -982,6 +1109,26 @@ describe('stores', () => {
       expect(values).toEqual([0, 10, 14]);
     });
 
+    it('should support an option object with equal from derived shorthand', () => {
+      const numbersStore = writable(0);
+      const multiplyStore = derived([numbersStore], {
+        derive: (values) => values[0] * 2,
+        equal: (a, b) => a % 10 === b % 10,
+      });
+      const values: number[] = [];
+      multiplyStore.subscribe((value) => values.push(value));
+
+      expect(get(multiplyStore)).toBe(0);
+
+      numbersStore.set(5);
+      expect(get(multiplyStore)).toBe(0);
+
+      numbersStore.set(7);
+      expect(get(multiplyStore)).toBe(14);
+
+      expect(values).toEqual([0, 14]);
+    });
+
     it('should support an option object with notEqual from derived shorthand', () => {
       const numbersStore = writable(0);
       const multiplyStore = derived([numbersStore], {
@@ -1012,7 +1159,7 @@ describe('stores', () => {
             onUseCalls++;
           },
         },
-        notEqual: (a: number, b: number) => a % 10 !== b % 10,
+        equal: (a: number, b: number) => a % 10 === b % 10,
       });
       const values: number[] = [];
       multiplyStore.subscribe((value) => values.push(value));
