@@ -4,6 +4,11 @@
 
 ## Store.notEqual() method
 
+> Warning: This API is now obsolete.
+> 
+> Use [Store.equal()](./tansu.store.equal.md) instead
+> 
+
 Compares two values and returns true if they are different. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic is to return true if `a` is a function or an object, or if `a` and `b` are different according to `Object.is`<!-- -->. This method can be overridden by subclasses to change the logic.
 
 **Signature:**
@@ -24,4 +29,8 @@ protected notEqual(a: T, b: T): boolean;
 boolean
 
 true if a and b are considered different.
+
+## Remarks
+
+This method is only called by the default implementation of [Store.equal()](./tansu.store.equal.md)<!-- -->, so overriding [Store.equal()](./tansu.store.equal.md) takes precedence over overriding notEqual.
 

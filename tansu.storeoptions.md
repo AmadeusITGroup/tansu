@@ -16,6 +16,7 @@ export interface StoreOptions<T>
 
 |  Property | Modifiers | Type | Description |
 |  --- | --- | --- | --- |
+|  [equal?](./tansu.storeoptions.equal.md) |  | (a: T, b: T) =&gt; boolean | _(Optional)_ Custom function to compare two values, that should return true if they are equal. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic (when this option is not present) is to return false if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. |
 |  [notEqual?](./tansu.storeoptions.notequal.md) |  | (a: T, b: T) =&gt; boolean | _(Optional)_ Custom function to compare two values, that should return true if they are different. It is called when setting a new value to avoid doing anything (such as notifying subscribers) if the value did not change. The default logic (when this option is not present) is to return true if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. |
 |  [onUse?](./tansu.storeoptions.onuse.md) |  | [OnUseFn](./tansu.onusefn.md)<!-- -->&lt;T&gt; | _(Optional)_ A function that is called when the number of subscribers changes from 0 to 1 (but not called when the number of subscribers changes from 1 to 2, ...). If it returns a function, that function will be called when the number of subscribers changes from 1 to 0. |
 
