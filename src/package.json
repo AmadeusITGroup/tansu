@@ -1,6 +1,6 @@
 {
   "name": "@amadeus-it-group/tansu",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "description": "tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by Svelte stores",
   "keywords": [
     "state management",
