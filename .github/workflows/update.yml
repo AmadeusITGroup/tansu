@@ -14,6 +14,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '16.x'
+      - run: yarn set version stable
       - run: yarn install
       - run: yarn up --caret '**'
       - run: yarn up -R '**'
