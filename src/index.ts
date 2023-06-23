@@ -1108,7 +1108,7 @@ abstract class ComputedStore<T> extends Store<T> {
       res.valueIndex++;
       res.pending = false;
       if (!this.#skipCallCompute && !this.#isPending()) {
-        this.#callCompute();
+        batch(() => this.#callCompute());
       }
     };
     subscriber.next = subscriber;
@@ -1119,7 +1119,7 @@ abstract class ComputedStore<T> extends Store<T> {
     subscriber.resume = () => {
       res.pending = false;
       if (!this.#skipCallCompute && !this.#isPending()) {
-        this.#callCompute();
+        batch(() => this.#callCompute());
       }
     };
     res.resubscribe = () => {

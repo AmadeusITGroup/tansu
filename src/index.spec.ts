@@ -2943,5 +2943,22 @@ describe('stores', () => {
       expect(values).toEqual(['b0ca0', 'b1ca0', 'b1ca2']);
       unsubscribe();
     });
+
+    it('should be compatible with rxjs (BehaviorSubject)', () => {
+      const a = new BehaviorSubject(0);
+      const b = computed(() => get(a) + 1);
+      const c = computed(() => b() + 1);
+      const bValues: number[] = [];
+      const cValues: number[] = [];
+      const bUnsubscribe = b.subscribe((b) => bValues.push(b));
+      const cUnsubscribe = c.subscribe((c) => cValues.push(c));
+      expect(bValues).toEqual([1]);
+      expect(cValues).toEqual([2]);
+      a.next(2);
+      expect(bValues).toEqual([1, 3]);
+      expect(cValues).toEqual([2, 4]);
+      bUnsubscribe();
+      cUnsubscribe();
+    });
   });
 });
