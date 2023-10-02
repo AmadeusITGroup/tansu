@@ -80,7 +80,10 @@ describe('stores', () => {
     it('should allow overriding equal', () => {
       const equalCalls: [number, number][] = [];
       class ModuloStore extends Store<number> {
-        constructor(public readonly modulo: number, initialValue: number) {
+        constructor(
+          public readonly modulo: number,
+          initialValue: number
+        ) {
           super(initialValue);
         }
         protected override equal(a: number, b: number): boolean {
@@ -140,7 +143,10 @@ describe('stores', () => {
     it('should allow overriding notEqual', () => {
       const notEqualCalls: [number, number][] = [];
       class ModuloStore extends Store<number> {
-        constructor(public readonly modulo: number, initialValue: number) {
+        constructor(
+          public readonly modulo: number,
+          initialValue: number
+        ) {
           super(initialValue);
         }
         protected override notEqual(a: number, b: number): boolean {
@@ -1711,7 +1717,11 @@ describe('stores', () => {
 
     it('should work with DebounceStore example', () => {
       class DebounceStore<T> extends DerivedStore<T, SubscribableStore<T>> {
-        constructor(store: SubscribableStore<T>, initialValue: T, private _delay: number) {
+        constructor(
+          store: SubscribableStore<T>,
+          initialValue: T,
+          private _delay: number
+        ) {
           super(store, initialValue);
         }
         protected derive(value: T) {
