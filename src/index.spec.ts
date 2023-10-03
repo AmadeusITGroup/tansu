@@ -2579,6 +2579,30 @@ describe('stores', () => {
   });
 
   describe('computed', () => {
+    it('should not call equal with undefined during the first computation', () => {
+      const a = writable(1);
+      const equal = vi.fn(Object.is);
+      const b = computed(() => a() + 1, {
+        equal,
+      });
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => {
+        values.push(value);
+      });
+      expect(equal).not.toHaveBeenCalled();
+      a.set(2);
+      expect(equal).toHaveBeenCalledOnce();
+      expect(equal).toHaveBeenCalledWith(2, 3);
+      equal.mockClear();
+      unsubscribe();
+      a.set(3);
+      const unsubscribe2 = b.subscribe((value) => {
+        values.push(value);
+      });
+      expect(equal).not.toHaveBeenCalled();
+      unsubscribe2();
+    });
+
     it('should properly subscribe to used stores and unsubscribe from unused ones', () => {
       const a = writable(true);
       let bHasListeners = false;

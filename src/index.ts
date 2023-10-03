@@ -363,10 +363,15 @@ export const get = <T>(store: StoreInput<T>): T => reactiveContext(store);
 
 const createEqualCache = (valueIndex: number): Record<number, boolean> => ({
   [valueIndex]: true, // the subscriber already has the last value
-  [valueIndex - 1]: false, // the subscriber had the previous value,
-  // which is known to be different because notEqual is called in the set method
   0: false, // the subscriber never received any value
 });
+
+const createEqualCacheFromSet = (valueIndex: number): Record<number, boolean> => {
+  const res = createEqualCache(valueIndex);
+  res[valueIndex - 1] = false; // the subscriber had the previous value,
+  // which is known to be different because equal is called in the set method
+  return res;
+};
 
 /**
  * Base class that can be extended to easily create a custom {@link Readable} store.
@@ -405,7 +410,7 @@ export abstract class Store<T> implements Readable<T> {
   #subscribersPaused = false;
   #valueIndex = 1;
   #value: T;
-  #equalCache = createEqualCache(1);
+  #equalCache: ReturnType<typeof createEqualCache> | undefined;
   #oldSubscriptions = new WeakMap<Unsubscriber, PrivateSubscriberObject<T>>();
 
   /**
@@ -450,12 +455,16 @@ export abstract class Store<T> implements Readable<T> {
   protected [triggerUpdate](): void {}
 
   #notifySubscriber(subscriber: PrivateSubscriberObject<T>): void {
-    const equalCache = this.#equalCache;
     const valueIndex = this.#valueIndex;
+    let equalCache = this.#equalCache;
+    if (!equalCache) {
+      equalCache = createEqualCache(valueIndex);
+      this.#equalCache = equalCache;
+    }
     const value = this.#value;
     let equal = equalCache[subscriber._valueIndex];
     if (equal == null) {
-      equal = this.equal(subscriber._value, value);
+      equal = !!this.equal(subscriber._value, value);
       equalCache[subscriber._valueIndex] = equal;
     }
     subscriber._valueIndex = valueIndex;
@@ -554,9 +563,11 @@ export abstract class Store<T> implements Readable<T> {
   protected resumeSubscribers(): void {
     if (this.#subscribersPaused) {
       this.#subscribersPaused = false;
-      batch(() => {
-        queue.add(this as any);
-      });
+      if (this.#subscribers.size) {
+        batch(() => {
+          queue.add(this as any);
+        });
+      }
     }
   }
 
@@ -567,11 +578,15 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    if (!this.equal(this.#value, value)) {
-      const valueIndex = this.#valueIndex + 1;
-      this.#valueIndex = valueIndex;
+    // only call equal here to compare with the previous value if the store is active
+    const callEqual = this.#cleanupFn;
+    const changeValue = callEqual ? !this.equal(this.#value, value) : true;
+    if (changeValue) {
       this.#value = value;
-      this.#equalCache = createEqualCache(valueIndex);
+      if (callEqual || this.#equalCache) {
+        this.#valueIndex++;
+        this.#equalCache = callEqual ? createEqualCacheFromSet(this.#valueIndex) : undefined;
+      }
       this.pauseSubscribers();
     }
     this.resumeSubscribers();
