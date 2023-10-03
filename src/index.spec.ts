@@ -1086,6 +1086,26 @@ describe('stores', () => {
       expect(get(multiplyStore)).toBe(14);
     });
 
+    it('should not call equal with undefined during the first computation', () => {
+      const a = writable(1);
+      const equal = vi.fn(Object.is);
+      const b = derived([a], {
+        derive([a]) {
+          return a + 1;
+        },
+        equal,
+      });
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => {
+        values.push(value);
+      });
+      expect(equal).not.toHaveBeenCalled();
+      a.set(2);
+      expect(equal).toHaveBeenCalledOnce();
+      expect(equal).toHaveBeenCalledWith(2, 3);
+      unsubscribe();
+    });
+
     it('should allow calling a derived store as a function', () => {
       const numbersStore = writable(0);
       const multiplyStore = derived([numbersStore], (values) => values[0] * 2);
@@ -2579,6 +2599,23 @@ describe('stores', () => {
   });
 
   describe('computed', () => {
+    it('should not call equal with undefined during the first computation', () => {
+      const a = writable(1);
+      const equal = vi.fn(Object.is);
+      const b = computed(() => a() + 1, {
+        equal,
+      });
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => {
+        values.push(value);
+      });
+      expect(equal).not.toHaveBeenCalled();
+      a.set(2);
+      expect(equal).toHaveBeenCalledOnce();
+      expect(equal).toHaveBeenCalledWith(2, 3);
+      unsubscribe();
+    });
+
     it('should properly subscribe to used stores and unsubscribe from unused ones', () => {
       const a = writable(true);
       let bHasListeners = false;

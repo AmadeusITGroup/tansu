@@ -364,9 +364,11 @@ export const get = <T>(store: StoreInput<T>): T => reactiveContext(store);
 const createEqualCache = (valueIndex: number): Record<number, boolean> => ({
   [valueIndex]: true, // the subscriber already has the last value
   [valueIndex - 1]: false, // the subscriber had the previous value,
-  // which is known to be different because notEqual is called in the set method
+  // which is known to be different because equal is called in the set method
   0: false, // the subscriber never received any value
 });
+
+const skipEqualInSet = Symbol();
 
 /**
  * Base class that can be extended to easily create a custom {@link Readable} store.
@@ -407,6 +409,8 @@ export abstract class Store<T> implements Readable<T> {
   #value: T;
   #equalCache = createEqualCache(1);
   #oldSubscriptions = new WeakMap<Unsubscriber, PrivateSubscriberObject<T>>();
+
+  private [skipEqualInSet] = false;
 
   /**
    *
@@ -455,7 +459,7 @@ export abstract class Store<T> implements Readable<T> {
     const value = this.#value;
     let equal = equalCache[subscriber._valueIndex];
     if (equal == null) {
-      equal = this.equal(subscriber._value, value);
+      equal = !!this.equal(subscriber._value, value);
       equalCache[subscriber._valueIndex] = equal;
     }
     subscriber._valueIndex = valueIndex;
@@ -567,11 +571,15 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    if (!this.equal(this.#value, value)) {
+    const skipEqual = this[skipEqualInSet];
+    if (skipEqual || !this.equal(this.#value, value)) {
       const valueIndex = this.#valueIndex + 1;
       this.#valueIndex = valueIndex;
       this.#value = value;
       this.#equalCache = createEqualCache(valueIndex);
+      if (skipEqual) {
+        delete this.#equalCache[valueIndex - 1];
+      }
       this.pauseSubscribers();
     }
     this.resumeSubscribers();
@@ -1030,8 +1038,13 @@ export function derived<T, S extends StoresInput>(
   const { derive, ...opts } = options;
   const Derived = isSyncDeriveFn(derive)
     ? class extends DerivedStore<T, S> {
+        constructor(stores: S, initialValue: T) {
+          super(stores, initialValue);
+          this[skipEqualInSet] = true; // skip call to equal in set until the first value is set
+        }
         protected override derive(values: StoresInputValues<S>) {
           this.set(derive(values));
+          this[skipEqualInSet] = false;
         }
       }
     : class extends DerivedStore<T, S> {
@@ -1091,6 +1104,7 @@ abstract class ComputedStore<T> extends Store<T> {
 
   constructor() {
     super(undefined as T);
+    this[skipEqualInSet] = true; // skip call to equal in set until the first value is set
   }
 
   #createSubscription<T>(subscribe: Readable<T>['subscribe']) {
@@ -1167,6 +1181,7 @@ abstract class ComputedStore<T> extends Store<T> {
         reactiveContext = previousReactiveContext;
       }
       this.set(value);
+      this[skipEqualInSet] = false;
       for (const [store, info] of this.#subscriptions) {
         if (info.versionIndex !== versionIndex) {
           this.#subscriptions.delete(store);
