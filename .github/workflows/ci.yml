@@ -21,7 +21,7 @@ jobs:
       - run: yarn --immutable
       - run: yarn lint
       - run: yarn format:check
-      - run: yarn test
+      - run: yarn test --coverage
       - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 #v3.1.1
         with:
           file: coverage/lcov.info

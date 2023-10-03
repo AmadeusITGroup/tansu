@@ -1,28 +1,30 @@
-import {
-  derived,
-  DerivedStore,
-  Store,
-  SubscribableStore,
-  writable,
-  get,
-  readable,
-  asReadable,
-  batch,
-  StoreOptions,
-  Readable,
-  symbolObservable,
-  SubscriberObject,
-  computed,
-  untrack,
-  ReadableSignal,
-  StoresInput,
-  StoresInputValues,
-  StoreInput,
-} from './index';
+import { AsyncPipe } from '@angular/common';
+import { Component, Injectable, inject } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
-import { Component, Injectable } from '@angular/core';
-import { TestBed } from '@angular/core/testing';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  DerivedStore,
+  Readable,
+  ReadableSignal,
+  Store,
+  StoreInput,
+  StoreOptions,
+  StoresInput,
+  StoresInputValues,
+  SubscribableStore,
+  SubscriberObject,
+  asReadable,
+  batch,
+  computed,
+  derived,
+  get,
+  readable,
+  symbolObservable,
+  untrack,
+  writable,
+} from './index';
 
 const customSimpleWritable = <T>(
   value: T
@@ -599,14 +601,14 @@ describe('stores', () => {
 
     it('should work with AsyncPipe', () => {
       @Component({
+        selector: `should-work-with-async-pipe-test`,
         template: `Value: {{ store | async }}`,
+        standalone: true,
+        imports: [AsyncPipe],
       })
       class MyComponent {
         store = writable(0);
       }
-      TestBed.configureTestingModule({
-        declarations: [MyComponent],
-      });
       const fixture = TestBed.createComponent(MyComponent);
       const componentInstance = fixture.componentInstance;
       fixture.detectChanges();
@@ -636,16 +638,15 @@ describe('stores', () => {
       }
 
       @Component({
+        selector: 'should-work-to-inject-a-class-extending-store-test',
         template: `Value: {{ store | async }}`,
+        standalone: true,
+        imports: [AsyncPipe],
         providers: [MyStore],
       })
       class MyComponent {
-        constructor(public store: MyStore) {}
+        store = inject(MyStore);
       }
-
-      TestBed.configureTestingModule({
-        declarations: [MyComponent],
-      });
       const fixture = TestBed.createComponent(MyComponent);
       const componentInstance = fixture.componentInstance;
       fixture.detectChanges();
@@ -1210,14 +1211,14 @@ describe('stores', () => {
 
     it('should only call deriveFn when there is a subscriber', () => {
       const a = writable(2);
-      const deriveFn = jasmine.createSpy('deriveFn', (a) => a * 2).and.callThrough();
+      const deriveFn = vi.fn((a) => a * 2);
       const b = derived(a, deriveFn);
       expect(deriveFn).not.toHaveBeenCalled();
       const values: number[] = [];
       let unsubscribe = b.subscribe((b) => values.push(b));
       expect(deriveFn).toHaveBeenCalledTimes(1);
       expect(deriveFn).toHaveBeenCalledWith(2);
-      deriveFn.calls.reset();
+      deriveFn.mockClear();
       expect(values).toEqual([4]);
       unsubscribe();
       a.set(5);
@@ -1304,7 +1305,7 @@ describe('stores', () => {
       const a = writable(0);
       const b = derived(a, (a) => `b${a}`);
       const c = derived(a, (a) => `c${a}`);
-      const dFn = jasmine.createSpy('dFn', ([b, c]) => `${b}${c}`).and.callThrough();
+      const dFn = vi.fn(([b, c]) => `${b}${c}`);
       const d = derived([b, c], dFn);
 
       const values: string[] = [];
@@ -1323,7 +1324,7 @@ describe('stores', () => {
     it('should prevent the asymmetric diamond dependency problem', () => {
       const a = writable(0);
       const b = derived(a, (a) => `b${a}`);
-      const cFn = jasmine.createSpy('cFn', ([a, b]) => `${a}${b}`).and.callThrough();
+      const cFn = vi.fn(([a, b]) => `${a}${b}`);
       const c = derived([a, b], cFn);
 
       const values: string[] = [];
@@ -1517,14 +1518,12 @@ describe('stores', () => {
 
     it('should give the final value synchronously on subscribe outside batch when changing the value inside derived', () => {
       const store = writable(0);
-      const fn = jasmine
-        .createSpy('deriveFn', (value: number) => {
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn((value: number) => {
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const derivedStore = derived(store, fn);
       const values: number[] = [];
       const unsubscribe = derivedStore.subscribe((value) => {
@@ -1537,14 +1536,12 @@ describe('stores', () => {
 
     it('should give the final value synchronously on subscribe in batch when changing the value inside derived', () => {
       const store = writable(0);
-      const fn = jasmine
-        .createSpy('deriveFn', (value: number) => {
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn((value: number) => {
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const derivedStore = derived(store, fn);
       const values: number[] = [];
       batch(() => {
@@ -1559,14 +1556,12 @@ describe('stores', () => {
 
     it('should not notify listeners if the final value did not change when changing the value inside derived', () => {
       const store = writable(10);
-      const fn = jasmine
-        .createSpy('deriveFn', (value: number) => {
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn((value: number) => {
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const derivedStore = derived(store, fn);
       const values: number[] = [];
       const unsubscribe = derivedStore.subscribe((value) => {
@@ -1582,14 +1577,12 @@ describe('stores', () => {
 
     it('should notify listeners if the final value changed when changing the value inside derived', () => {
       const store = writable(11);
-      const fn = jasmine
-        .createSpy('deriveFn', (value: number) => {
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn((value: number) => {
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const derivedStore = derived(store, fn);
       const values: number[] = [];
       const unsubscribe = derivedStore.subscribe((value) => {
@@ -1606,18 +1599,14 @@ describe('stores', () => {
     it('should call derived functions only with the final value when changing the value inside a dependent derived', () => {
       const dirtyValue$ = writable(0);
       const minValue$ = writable(0);
-      const valueDeriveFn = jasmine
-        .createSpy('valueDeriveFn', ([dirtyValue, minValue]: [number, number]) => {
-          if (dirtyValue < minValue) {
-            dirtyValue$.set(dirtyValue + 1);
-          }
-          return dirtyValue;
-        })
-        .and.callThrough();
+      const valueDeriveFn = vi.fn(([dirtyValue, minValue]: [number, number]) => {
+        if (dirtyValue < minValue) {
+          dirtyValue$.set(dirtyValue + 1);
+        }
+        return dirtyValue;
+      });
       const value$ = derived([dirtyValue$, minValue$], valueDeriveFn);
-      const doubleDeriveFn = jasmine
-        .createSpy('doubleDeriveFn', (value: number) => value * 2)
-        .and.callThrough();
+      const doubleDeriveFn = vi.fn((value: number) => value * 2);
       const double$ = derived(value$, doubleDeriveFn);
 
       const values: number[] = [];
@@ -1648,18 +1637,14 @@ describe('stores', () => {
     it('should call derived functions only with the final value when changing the value inside a previous independent derived', () => {
       const dirtyValue$ = writable(0);
       const minValue$ = writable(0);
-      const valueDeriveFn = jasmine
-        .createSpy('valueDeriveFn', ([dirtyValue, minValue]: [number, number]) => {
-          if (dirtyValue < minValue) {
-            dirtyValue$.set(dirtyValue + 1);
-          }
-          return dirtyValue;
-        })
-        .and.callThrough();
+      const valueDeriveFn = vi.fn(([dirtyValue, minValue]: [number, number]) => {
+        if (dirtyValue < minValue) {
+          dirtyValue$.set(dirtyValue + 1);
+        }
+        return dirtyValue;
+      });
       const value$ = derived([dirtyValue$, minValue$], valueDeriveFn);
-      const doubleDeriveFn = jasmine
-        .createSpy('doubleDeriveFn', (value: number) => value * 2)
-        .and.callThrough();
+      const doubleDeriveFn = vi.fn((value: number) => value * 2);
       const double$ = derived(dirtyValue$, doubleDeriveFn); // depends on dirtyValue$, not on value$
 
       const values: number[] = [];
@@ -1695,7 +1680,7 @@ describe('stores', () => {
       expect(values).toEqual([0]);
       misbehavingStore.set(1);
       expect(values).toEqual([0, 1]);
-      expect(misbehavingStore.subscribers).toHaveSize(1);
+      expect(misbehavingStore.subscribers).toHaveLength(1);
       misbehavingStore.subscribers[0].pause?.();
       expect(get(derivedStore)).toBe(1);
       unsubscribe();
@@ -1729,27 +1714,24 @@ describe('stores', () => {
           return () => clearTimeout(timeout);
         }
       }
-      const clock = jasmine.clock();
-      clock.uninstall();
-      clock.withMock(() => {
-        const a = writable(1);
-        const b = new DebounceStore(a, 0, 100);
-        const values: number[] = [];
-        const unsubscribe = b.subscribe((value) => values.push(value));
-        expect(values).toEqual([0]);
-        clock.tick(99);
-        expect(values).toEqual([0]);
-        clock.tick(1);
-        expect(values).toEqual([0, 1]);
-        a.set(2);
-        clock.tick(1);
-        a.set(3);
-        clock.tick(99);
-        expect(values).toEqual([0, 1]);
-        clock.tick(1);
-        expect(values).toEqual([0, 1, 3]);
-        unsubscribe();
-      });
+      vi.useFakeTimers();
+      const a = writable(1);
+      const b = new DebounceStore(a, 0, 100);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      vi.advanceTimersByTime(99);
+      expect(values).toEqual([0]);
+      vi.advanceTimersByTime(1);
+      expect(values).toEqual([0, 1]);
+      a.set(2);
+      vi.advanceTimersByTime(1);
+      a.set(3);
+      vi.advanceTimersByTime(99);
+      expect(values).toEqual([0, 1]);
+      vi.advanceTimersByTime(1);
+      expect(values).toEqual([0, 1, 3]);
+      unsubscribe();
     });
 
     it('should infer types automatically in the async case', () => {
@@ -1799,28 +1781,26 @@ describe('stores', () => {
 
     it('should call clean-up function returned in deriveFn with derived', () => {
       const a = writable(1);
-      const cleanUpFn = jasmine.createSpy('cleanupFn').and.callThrough();
-      const deriveFn = jasmine
-        .createSpy('deriveFn', (value: number, set: (a: number) => void) => {
-          set(value * 2);
-          return () => cleanUpFn(value);
-        })
-        .and.callThrough();
+      const cleanUpFn = vi.fn();
+      const deriveFn = vi.fn((value: number, set: (a: number) => void) => {
+        set(value * 2);
+        return () => cleanUpFn(value);
+      });
       const b = derived(a, deriveFn, 0);
       const values: number[] = [];
       expect(deriveFn).not.toHaveBeenCalled();
       const unsubscribe = b.subscribe((value) => values.push(value));
       expect(values).toEqual([2]);
       expect(deriveFn).toHaveBeenCalledTimes(1);
-      deriveFn.calls.reset();
+      deriveFn.mockClear();
       expect(cleanUpFn).not.toHaveBeenCalled();
       a.set(3);
       expect(values).toEqual([2, 6]);
       expect(deriveFn).toHaveBeenCalledTimes(1);
-      deriveFn.calls.reset();
+      deriveFn.mockClear();
       expect(cleanUpFn).toHaveBeenCalledWith(1);
       expect(cleanUpFn).toHaveBeenCalledTimes(1);
-      cleanUpFn.calls.reset();
+      cleanUpFn.mockClear();
       unsubscribe();
       expect(deriveFn).not.toHaveBeenCalled();
       expect(cleanUpFn).toHaveBeenCalledTimes(1);
@@ -1906,12 +1886,12 @@ describe('stores', () => {
       const a = writable(1);
       const b = writable(2);
       const c = writable(0);
-      const spy = spyOn(a, 'subscribe').and.callThrough();
+      const spy = vi.spyOn(a, 'subscribe');
       const d = switchMap(c, (c) => (c % 2 === 0 ? a : b));
       const values: number[] = [];
       const unsubscribe = d.subscribe((value) => values.push(value));
       expect(spy).toHaveBeenCalledTimes(1);
-      spy.calls.reset();
+      spy.mockClear();
       expect(values).toEqual([1]);
       c.set(2);
       expect(values).toEqual([1]);
@@ -2288,9 +2268,9 @@ describe('stores', () => {
     it('should work with a derived store of a derived store that is paused but finally does not change', () => {
       const a = writable(0);
       const b = writable(0);
-      const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
+      const cFn = vi.fn((a) => `a${a}`);
       const c = derived(a, cFn);
-      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const dFn = vi.fn(([b, c]) => `b${b}c${c}`);
       const d = derived([b, c], dFn);
       const values: string[] = [];
       const unsubscribe = d.subscribe((v) => values.push(v));
@@ -2318,9 +2298,9 @@ describe('stores', () => {
     it('should work with a derived store of a derived store that is paused and finally changes', () => {
       const a = writable(0);
       const b = writable(0);
-      const cFn = jasmine.createSpy('cFn', (a) => `a${a}`).and.callThrough();
+      const cFn = vi.fn((a) => `a${a}`);
       const c = derived(a, cFn);
-      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const dFn = vi.fn(([b, c]) => `b${b}c${c}`);
       const d = derived([b, c], dFn);
       const values: string[] = [];
       const unsubscribe = d.subscribe((v) => values.push(v));
@@ -2349,14 +2329,12 @@ describe('stores', () => {
     it('should work with a derived store of an async derived store that is paused but does not set any new value', () => {
       const a = writable(0);
       const b = writable(0);
-      const cFn = jasmine
-        .createSpy('cFn', (a, set) => {
-          // set is only called if a is even, otherwise the old value is kept
-          if (a % 2 === 0) set(`a${a}`);
-        })
-        .and.callThrough();
+      const cFn = vi.fn((a, set) => {
+        // set is only called if a is even, otherwise the old value is kept
+        if (a % 2 === 0) set(`a${a}`);
+      });
       const c = derived(a, cFn, 'i');
-      const dFn = jasmine.createSpy('dFn', ([b, c]) => `b${b}c${c}`).and.callThrough();
+      const dFn = vi.fn(([b, c]) => `b${b}c${c}`);
       const d = derived([b, c], dFn);
       const values: string[] = [];
       const unsubscribe = d.subscribe((v) => values.push(v));
@@ -2505,9 +2483,9 @@ describe('stores', () => {
 
       batch(() => {
         a.set(1);
-        expect(get(b.store)).withContext('get the latest value').toEqual(1);
+        expect(get(b.store)).toEqual(1);
         expect(b.calls).toEqual(2);
-        expect(b.values).withContext('outside listener not called').toEqual([0]);
+        expect(b.values).toEqual([0]);
       });
 
       expect(b.values).toEqual([0, 1]);
@@ -2617,7 +2595,7 @@ describe('stores', () => {
           cHasListeners = false;
         };
       });
-      const computedFn = jasmine.createSpy('computedFn', () => (a() ? b() : c())).and.callThrough();
+      const computedFn = vi.fn(() => (a() ? b() : c()));
       const d = computed(computedFn);
 
       expect(computedFn).not.toHaveBeenCalled();
@@ -2657,9 +2635,7 @@ describe('stores', () => {
     it('should not recompute if an untracked store changed', () => {
       const a = writable(1);
       const b = writable(2);
-      const multiply = jasmine
-        .createSpy('multiply', () => a() * untrack(() => b()))
-        .and.callThrough();
+      const multiply = vi.fn(() => a() * untrack(() => b()));
       const c = computed(multiply);
       expect(multiply).not.toHaveBeenCalled();
       expect(c()).toEqual(2);
@@ -2676,9 +2652,7 @@ describe('stores', () => {
     it('should allow retrieving the value with get', () => {
       const a = writable(1);
       const b = writable(2);
-      const multiply = jasmine
-        .createSpy('multiply', () => get(a) * untrack(() => get(b)))
-        .and.callThrough();
+      const multiply = vi.fn(() => get(a) * untrack(() => get(b)));
       const c = computed(multiply);
       expect(multiply).not.toHaveBeenCalled();
       expect(get(c)).toEqual(2);
@@ -2694,7 +2668,7 @@ describe('stores', () => {
 
     it('should not recompute (with get) if dependent stores did not change', () => {
       const a = writable(1);
-      const double = jasmine.createSpy('double', () => a() * 2).and.callThrough();
+      const double = vi.fn(() => a() * 2);
       const b = computed(double);
       expect(double).not.toHaveBeenCalled();
       expect(b()).toEqual(2);
@@ -2713,7 +2687,7 @@ describe('stores', () => {
 
     it('should not recompute (with permanent subscription) if dependent stores did not change', () => {
       const a = writable(1);
-      const double = jasmine.createSpy('double', () => a() * 2).and.callThrough();
+      const double = vi.fn(() => a() * 2);
       const b = computed(double);
       expect(double).not.toHaveBeenCalled();
       const bValues: number[] = [];
@@ -2803,7 +2777,7 @@ describe('stores', () => {
       expect(values).toEqual([0]);
       misbehavingStore.set(1);
       expect(values).toEqual([0, 1]);
-      expect(misbehavingStore.subscribers).toHaveSize(1);
+      expect(misbehavingStore.subscribers).toHaveLength(1);
       misbehavingStore.subscribers[0].pause?.();
       expect(get(computedStore)).toBe(1);
       unsubscribe();
@@ -2811,15 +2785,13 @@ describe('stores', () => {
 
     it('should give the final value synchronously on subscribe in batch when changing the value inside computed', () => {
       const store = writable(0);
-      const fn = jasmine
-        .createSpy('computedFn', () => {
-          const value = store();
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn(() => {
+        const value = store();
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const computedStore = computed(fn);
       const values: number[] = [];
       batch(() => {
@@ -2834,15 +2806,13 @@ describe('stores', () => {
 
     it('should not notify listeners if the final value did not change when changing the value inside computed', () => {
       const store = writable(10);
-      const fn = jasmine
-        .createSpy('computedFn', () => {
-          const value = store();
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn(() => {
+        const value = store();
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const computedStore = computed(fn);
       const values: number[] = [];
       const unsubscribe = computedStore.subscribe((value) => {
@@ -2858,15 +2828,13 @@ describe('stores', () => {
 
     it('should notify listeners if the final value changed when changing the value inside computed', () => {
       const store = writable(11);
-      const fn = jasmine
-        .createSpy('computedFn', () => {
-          const value = store();
-          if (value < 10) {
-            store.set(value + 1);
-          }
-          return value;
-        })
-        .and.callThrough();
+      const fn = vi.fn(() => {
+        const value = store();
+        if (value < 10) {
+          store.set(value + 1);
+        }
+        return value;
+      });
       const computedStore = computed(fn);
       const values: number[] = [];
       const unsubscribe = computedStore.subscribe((value) => {
@@ -2883,20 +2851,16 @@ describe('stores', () => {
     it('should call computed functions only with the final value when changing the value inside a dependent computed', () => {
       const dirtyValue$ = writable(0);
       const minValue$ = writable(0);
-      const valueComputedFn = jasmine
-        .createSpy('valueComputedFn', () => {
-          const dirtyValue = dirtyValue$();
-          const minValue = minValue$();
-          if (dirtyValue < minValue) {
-            dirtyValue$.set(dirtyValue + 1);
-          }
-          return dirtyValue;
-        })
-        .and.callThrough();
+      const valueComputedFn = vi.fn(() => {
+        const dirtyValue = dirtyValue$();
+        const minValue = minValue$();
+        if (dirtyValue < minValue) {
+          dirtyValue$.set(dirtyValue + 1);
+        }
+        return dirtyValue;
+      });
       const value$ = computed(valueComputedFn);
-      const doubleComputedFn = jasmine
-        .createSpy('doubleComputedFn', () => value$() * 2)
-        .and.callThrough();
+      const doubleComputedFn = vi.fn(() => value$() * 2);
       const double$ = computed(doubleComputedFn);
 
       const values: number[] = [];
@@ -2927,9 +2891,9 @@ describe('stores', () => {
     it('should work with a computed store of a computed store that is paused but finally does not change', () => {
       const a = writable(0);
       const b = writable(0);
-      const cFn = jasmine.createSpy('cFn', () => `a${a()}`).and.callThrough();
+      const cFn = vi.fn(() => `a${a()}`);
       const c = computed(cFn);
-      const dFn = jasmine.createSpy('dFn', () => `b${b()}c${c()}`).and.callThrough();
+      const dFn = vi.fn(() => `b${b()}c${c()}`);
       const d = computed(dFn);
       const values: string[] = [];
       const unsubscribe = d.subscribe((v) => values.push(v));
