@@ -9,17 +9,17 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set Node.js version
         uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
       - run: yarn set version stable
       - run: yarn install --no-immutable
       - run: yarn up --caret '**'
       - run: yarn up -R '**'
       - name: Create pull request
-        uses: peter-evans/create-pull-request@b4d51739f96fca8047ad065eccef63442d8e99f7 # v4.2.0
+        uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # v5.0.2
         with:
           commit-message: 'chore: Update all dependencies'
           branch: dependencies

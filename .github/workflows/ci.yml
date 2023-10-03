@@ -8,10 +8,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
       - uses: actions/cache@v3
         with:
           path: .yarn/cache
@@ -22,7 +22,7 @@ jobs:
       - run: yarn lint
       - run: yarn format:check
       - run: yarn test --coverage
-      - uses: codecov/codecov-action@d9f34f8cd5cb3b3eb79b3e4b5dae3a16df499a70 #v3.1.1
+      - uses: codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d #v3.1.4
         with:
           file: coverage/lcov.info
       - run: yarn build
