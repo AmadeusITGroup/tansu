@@ -11,10 +11,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
       - run: yarn --immutable
       - name: npm version
         working-directory: src
@@ -37,7 +37,7 @@ jobs:
       - name: npm logout
         run: rm ~/.npmrc
       - run: git push origin master v${{ inputs.version }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: gh-pages
           path: gh-pages
