@@ -2,33 +2,33 @@
   "name": "@amadeus-it-group/tansu",
   "type": "module",
   "devDependencies": {
-    "@angular/common": "^16.2.11",
-    "@angular/compiler": "^16.2.11",
-    "@angular/compiler-cli": "^16.2.11",
-    "@angular/core": "^16.2.11",
-    "@angular/platform-browser": "^16.2.11",
-    "@angular/platform-browser-dynamic": "^16.2.11",
-    "@commitlint/cli": "^18.2.0",
-    "@commitlint/config-conventional": "^18.1.0",
-    "@microsoft/api-documenter": "^7.23.11",
-    "@microsoft/api-extractor": "^7.38.2",
+    "@angular/common": "^17.0.5",
+    "@angular/compiler": "^17.0.5",
+    "@angular/compiler-cli": "^17.0.5",
+    "@angular/core": "^17.0.5",
+    "@angular/platform-browser": "^17.0.5",
+    "@angular/platform-browser-dynamic": "^17.0.5",
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
+    "@microsoft/api-documenter": "^7.23.12",
+    "@microsoft/api-extractor": "^7.38.3",
     "@rollup/plugin-typescript": "^11.1.5",
-    "@typescript-eslint/eslint-plugin": "^6.9.1",
-    "@typescript-eslint/parser": "^6.9.1",
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
     "@vitest/coverage-istanbul": "^0.34.6",
     "@vitest/ui": "0.34.6",
-    "eslint": "^8.52.0",
+    "eslint": "^8.55.0",
     "eslint-config-prettier": "^9.0.0",
     "happy-dom": "^12.10.3",
     "husky": "^8.0.3",
-    "prettier": "^3.0.3",
+    "prettier": "^3.1.0",
     "pretty-quick": "^3.1.3",
-    "rollup": "^4.2.0",
+    "rollup": "^4.6.1",
     "rxjs": "^7.8.1",
-    "svelte": "^4.2.2",
-    "typescript": "^5.2.2",
+    "svelte": "^4.2.8",
+    "typescript": "^5.3.2",
     "vitest": "^0.34.6",
-    "zone.js": "^0.14.1"
+    "zone.js": "^0.14.2"
   },
   "scripts": {
     "test": "vitest run",
@@ -56,5 +56,5 @@
       "@commitlint/config-conventional"
     ]
   },
-  "packageManager": "yarn@4.0.1"
+  "packageManager": "yarn@4.0.2"
 }
