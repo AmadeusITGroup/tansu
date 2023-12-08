@@ -19,6 +19,8 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  --- | --- |
 |  [asReadable(store)](./tansu.asreadable.md) | Returns a wrapper (for the given store) which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface. This converts any [StoreInput](./tansu.storeinput.md) to a [ReadableSignal](./tansu.readablesignal.md) and exposes the store as read-only. |
 |  [asReadable(store, extraProp)](./tansu.asreadable_1.md) | Returns a wrapper (for the given store) which only exposes the [ReadableSignal](./tansu.readablesignal.md) interface and also adds the given extra properties on the returned object. |
+|  [asWritable(store, set)](./tansu.aswritable.md) | Returns a wrapper (for the given store) which only exposes the [WritableSignal](./tansu.writablesignal.md) interface. When the value is changed from the given wrapper, the provided set function is called. |
+|  [asWritable(store, extraProps)](./tansu.aswritable_1.md) | Returns a wrapper (for the given store) which only exposes the [WritableSignal](./tansu.writablesignal.md) interface and also adds the given extra properties on the returned object. |
 |  [computed(fn, options)](./tansu.computed.md) | Creates a store whose value is computed by the provided function. |
 |  [derived(stores, options, initialValue)](./tansu.derived.md) | A convenience function to create a new store with a state computed from the latest values of dependent stores. Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state. |
 |  [derived(stores, options, initialValue)](./tansu.derived_1.md) |  |
@@ -45,6 +47,7 @@ tansu is a lightweight, push-based state management library. It borrows the idea
 |  Variable | Description |
 |  --- | --- |
 |  [batch](./tansu.batch.md) | Batches multiple changes to stores while calling the provided function, preventing derived stores from updating until the function returns, to avoid unnecessary recomputations. |
+|  [equal](./tansu.equal.md) | Default implementation of the equal function used by tansu when a store changes, to know if listeners need to be notified. Returns false if <code>a</code> is a function or an object, or if <code>a</code> and <code>b</code> are different according to <code>Object.is</code>. Otherwise, returns true. |
 |  [get](./tansu.get.md) | A utility function to get the current value from a given store. It works by subscribing to a store, capturing the value (synchronously) and unsubscribing just after. |
 |  [symbolObservable](./tansu.symbolobservable.md) | Symbol used in [InteropObservable](./tansu.interopobservable.md) allowing any object to expose an observable. |
 |  [untrack](./tansu.untrack.md) | Stops the tracking of dependencies made by [computed()](./tansu.computed.md) and calls the provided function. After the function returns, the tracking of dependencies continues as before. |
