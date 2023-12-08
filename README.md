@@ -4,8 +4,9 @@
 ![build](https://github.com/AmadeusITGroup/tansu/workflows/ci/badge.svg)
 [![codecov](https://codecov.io/gh/AmadeusITGroup/tansu/branch/master/graph/badge.svg)](https://codecov.io/gh/AmadeusITGroup/tansu)
 
-Tansu is a lightweight, push-based state management library.
-It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md).
+Tansu is a lightweight, push-based framework-agnostic state management library.
+It borrows the ideas and APIs originally designed and implemented by [Svelte stores](https://github.com/sveltejs/rfcs/blob/master/text/0002-reactive-stores.md)
+and extends them with `computed` and `batch`.
 
 Main characteristics:
 
