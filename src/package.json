@@ -1,10 +1,24 @@
 {
   "name": "@amadeus-it-group/tansu",
   "version": "0.0.23",
-  "description": "tansu is a lightweight, push-based state management library. It borrows the ideas and APIs originally designed and implemented by Svelte stores",
+  "description": "tansu is a lightweight, push-based framework-agnostic state management library. It borrows the ideas and APIs originally designed and implemented by Svelte stores and extends them with computed and batch.",
   "keywords": [
+    "signals",
+    "signal",
+    "agnostic",
+    "reactive",
+    "store",
+    "state",
+    "model",
+    "interop",
+    "observable",
+    "computed",
+    "derived",
+    "readable",
+    "writable",
+    "svelte",
     "state management",
-    "Angular"
+    "angular"
   ],
   "main": "index.cjs.js",
   "module": "index.es.js",
