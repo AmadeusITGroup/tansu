@@ -10,11 +10,16 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18.x'
+          node-version: '20.x'
+          cache: yarn
+          registry-url: 'https://registry.npmjs.org'
       - run: yarn --immutable
       - name: npm version
         working-directory: src
@@ -28,14 +33,12 @@ jobs:
       - run: git show HEAD
       - run: yarn build
       - run: yarn docs
-      - name: npm login
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - run: |
           npm whoami
-      - run: npm publish --access=public
+          npm publish --access=public --provenance
         working-directory: dist/package
-      - name: npm logout
-        run: rm ~/.npmrc
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: git push origin master v${{ inputs.version }}
       - uses: actions/checkout@v4
         with:
