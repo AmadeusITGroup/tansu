@@ -266,6 +266,59 @@ export function asReadable<T, U>(
   return res;
 }
 
+const defaultUpdate: any = function <T, U>(this: Writable<T, U>, updater: Updater<T, U>) {
+  this.set(updater(untrack(() => get(this))));
+};
+
+/**
+ * Returns a wrapper (for the given store) which only exposes the {@link WritableSignal} interface.
+ * When the value is changed from the given wrapper, the provided set function is called.
+ *
+ * @param store - store to wrap
+ * @param set - function that will be called when the value is changed from the wrapper
+ * (through the {@link Writable.set|set} or the {@link Writable.update|update} function).
+ * If set is not specified, a noop function is used (so the value of the store cannot be changed
+ * from the returned wrapper).
+ * @returns A wrapper which only exposes the {@link WritableSignal} interface.
+ */
+export function asWritable<T, W = T>(
+  store: StoreInput<T>,
+  set?: WritableSignal<T, W>['set']
+): WritableSignal<T, W>;
+/**
+ * Returns a wrapper (for the given store) which only exposes the {@link WritableSignal} interface and
+ * also adds the given extra properties on the returned object.
+ *
+ * @param store - store to wrap
+ * @param extraProps - object containing the extra properties to add on the returned object,
+ * and optionally the {@link Writable.set|set} and the {@link Writable.update|update} function of the
+ * {@link WritableSignal} interface.
+ * If the set function is not specified, a noop function is used.
+ * If the update function is not specified, a default function that calls set is used.
+ * @returns A wrapper which only exposes the {@link WritableSignal} interface and the given extra properties.
+ */
+export function asWritable<T, U, W = T>(
+  store: StoreInput<T>,
+  extraProps: U & Partial<Pick<WritableSignal<T, W>, 'set' | 'update'>>
+): WritableSignal<T, W> & Omit<U, keyof WritableSignal<T, W>>;
+export function asWritable<T, U, W = T>(
+  store: StoreInput<T>,
+  setOrExtraProps?:
+    | WritableSignal<T, W>['set']
+    | (U & Partial<Pick<WritableSignal<T, W>, 'set' | 'update'>>)
+): WritableSignal<T, W> & Omit<U, keyof WritableSignal<T, W>> {
+  return asReadable(
+    store,
+    typeof setOrExtraProps === 'function'
+      ? { set: setOrExtraProps, update: defaultUpdate }
+      : {
+          ...setOrExtraProps,
+          set: setOrExtraProps?.set ?? noop,
+          update: setOrExtraProps?.update ?? (setOrExtraProps?.set ? defaultUpdate : noop),
+        }
+  ) as any;
+}
+
 const triggerUpdate = Symbol();
 const queueProcess = Symbol();
 let willProcessQueue = false;

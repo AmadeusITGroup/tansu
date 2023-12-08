@@ -15,6 +15,7 @@ import {
   StoresInputValues,
   SubscribableStore,
   SubscriberObject,
+  asWritable,
   asReadable,
   batch,
   computed,
@@ -1045,6 +1046,156 @@ describe('stores', () => {
       expect((readonlyStore as any).set).toBeUndefined();
       expect((readonlyStore as any).update).toBeUndefined();
       expect(readonlyStore[Symbol.observable || '@@observable']()).toBe(readonlyStore);
+    });
+  });
+
+  describe('asWritable', () => {
+    class MyStore extends Store<number> {
+      constructor() {
+        super(0);
+      }
+      increment() {
+        this.update((value) => value + 1);
+      }
+      reset(value: number) {
+        this.set(value);
+      }
+    }
+
+    it('should work with a computed with a set function', () => {
+      const store = writable(0);
+      const computedDoubleStore = computed(() => store() * 2);
+      const writableDoubleStore = asWritable(computedDoubleStore, (value) => store.set(value / 2));
+      expect(writableDoubleStore()).toBe(0);
+      store.set(1);
+      expect(writableDoubleStore()).toBe(2);
+      writableDoubleStore.set(4);
+      expect(store()).toBe(2);
+      expect(writableDoubleStore()).toBe(4);
+      writableDoubleStore.update((value) => value + 2);
+      expect(writableDoubleStore()).toBe(6);
+      expect(store()).toBe(3);
+    });
+
+    it('should work with an instance of a class extending Store with no set function', () => {
+      const myStore = new MyStore();
+      const writableStore = asWritable(myStore);
+      expect(get(writableStore)).toBe(0);
+      expect(writableStore()).toBe(0);
+      myStore.increment();
+      expect(get(writableStore)).toBe(1);
+      expect(writableStore()).toBe(1);
+      expect((writableStore as any).increment).toBeUndefined();
+      // trying to change writableStore does nothing because no set function was provided:
+      writableStore.set(2);
+      expect(writableStore()).toBe(1);
+      const updateFunction = vi.fn((value: number) => value * 2);
+      writableStore.update(updateFunction);
+      expect(updateFunction).not.toHaveBeenCalled();
+      expect(writableStore()).toBe(1);
+    });
+
+    it('should work with an instance of a class extending Store with a set function', () => {
+      const myStore = new MyStore();
+      const writableStore = asWritable(myStore, (value) => myStore.reset(value));
+      expect(get(writableStore)).toBe(0);
+      expect(writableStore()).toBe(0);
+      myStore.increment();
+      expect(get(writableStore)).toBe(1);
+      expect(writableStore()).toBe(1);
+      expect((writableStore as any).increment).toBeUndefined();
+      writableStore.set(2);
+      expect(writableStore()).toBe(2);
+      writableStore.update((value) => value * 2);
+      expect(writableStore()).toBe(4);
+    });
+
+    it('should work with an instance of a class extending Store with multiple functions', () => {
+      const myStore = new MyStore();
+      const writableStore = asWritable(myStore, {
+        set: (value) => myStore.reset(value),
+        callIncrement: () => myStore.increment(),
+      });
+      expect(get(writableStore)).toBe(0);
+      expect(writableStore()).toBe(0);
+      myStore.increment();
+      expect(get(writableStore)).toBe(1);
+      expect(writableStore()).toBe(1);
+      expect((writableStore as any).increment).toBeUndefined();
+      writableStore.set(2);
+      expect(writableStore()).toBe(2);
+      writableStore.callIncrement();
+      expect(writableStore()).toBe(3);
+      writableStore.update((value) => value * 2);
+      expect(writableStore()).toBe(6);
+    });
+
+    it('should work with an InteropObservable', () => {
+      const behaviorSubject = new BehaviorSubject(0);
+      const myStore = { [symbolObservable]: () => behaviorSubject, next: () => {} };
+      const writableStore = asWritable(myStore, (value) => behaviorSubject.next(value));
+      expect(get(writableStore)).toBe(0);
+      expect(writableStore()).toBe(0);
+      behaviorSubject.next(1);
+      expect(get(writableStore)).toBe(1);
+      expect(writableStore()).toBe(1);
+      expect((writableStore as any).next).toBeUndefined();
+      writableStore.set(2);
+      expect(writableStore()).toBe(2);
+      writableStore.update((value) => value * 2);
+      expect(writableStore()).toBe(4);
+    });
+
+    it('should work with a writable', () => {
+      const myStore = writable(0);
+      const set = vi.fn(myStore.set);
+      const update = vi.fn(myStore.update);
+      const writableStore = asWritable(myStore, {
+        set,
+        update,
+        increment: () => {
+          myStore.update((value) => value + 1);
+        },
+      });
+      expect(get(writableStore)).toBe(0);
+      expect(writableStore()).toBe(0);
+      myStore.set(1);
+      expect(get(writableStore)).toBe(1);
+      expect(writableStore()).toBe(1);
+      expect(set).not.toHaveBeenCalled();
+      writableStore.set(2);
+      expect(set).toHaveBeenCalledOnce();
+      set.mockClear();
+      expect(writableStore()).toBe(2);
+      expect(update).not.toHaveBeenCalled();
+      writableStore.update((value) => value * 2);
+      expect(update).toHaveBeenCalledOnce();
+      update.mockClear();
+      expect(writableStore()).toBe(4);
+      writableStore.increment();
+      expect(writableStore()).toBe(5);
+      expect(set).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('should not track when getting the value of the store in update', () => {
+      const counter = writable(0);
+      const exposedCounter = asWritable(counter, counter.set);
+      const num = writable(1);
+      const doubleNum = computed(() => {
+        exposedCounter.update((value) => value + 1);
+        return num() * 2;
+      });
+      expect(counter()).toBe(0);
+      expect(doubleNum()).toBe(2);
+      expect(counter()).toBe(1);
+      expect(doubleNum()).toBe(2);
+      num.set(3);
+      expect(counter()).toBe(1);
+      expect(doubleNum()).toBe(6);
+      expect(counter()).toBe(2);
+      expect(doubleNum()).toBe(6);
+      expect(counter()).toBe(2);
     });
   });
 
