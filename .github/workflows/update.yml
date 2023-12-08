@@ -14,10 +14,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      - run: yarn set version stable
-      - run: yarn install --no-immutable
-      - run: yarn up --caret '**'
-      - run: yarn up -R '**'
+      - run: npx npm-check-updates -u --peer
+      - run: npm install --ignore-scripts
+      - run: npm update --ignore-scripts
       - name: Create pull request
         uses: peter-evans/create-pull-request@153407881ec5c347639a548ade7d8ad1d6740e38 # v5.0.2
         with:

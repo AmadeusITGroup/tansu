@@ -18,9 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: yarn
+          cache: npm
           registry-url: 'https://registry.npmjs.org'
-      - run: yarn --immutable
+      - run: npm ci
       - name: npm version
         working-directory: src
         run: |
@@ -31,8 +31,8 @@ jobs:
           git commit -m v${{ inputs.version }}
           git tag v${{ inputs.version }}
       - run: git show HEAD
-      - run: yarn build
-      - run: yarn docs
+      - run: npm run build
+      - run: npm run docs
       - run: |
           npm whoami
           npm publish --access=public --provenance
