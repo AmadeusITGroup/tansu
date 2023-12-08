@@ -17,6 +17,7 @@ import {
   SubscriberObject,
   asWritable,
   asReadable,
+  equal,
   batch,
   computed,
   derived,
@@ -658,6 +659,39 @@ describe('stores', () => {
       expect(fixture.nativeElement.textContent).toBe('Value: 1');
       fixture.destroy();
       expect(componentInstance.store.hasListeners).toBe(false);
+    });
+
+    it('equal should work as designed', () => {
+      // returns false for objects and functions:
+      const obj = {};
+      const fn = () => {};
+      expect(equal(obj, obj)).toBe(false);
+      expect(equal(fn, fn)).toBe(false);
+      expect(equal(obj, fn)).toBe(false);
+      expect(equal(fn, obj)).toBe(false);
+      expect(equal(obj, {})).toBe(false);
+      expect(equal(fn, () => {})).toBe(false);
+      // works as Object.is for other values:
+      expect(equal(true, true)).toBe(true);
+      expect(equal(false, false)).toBe(true);
+      expect(equal(true, false)).toBe(false);
+      expect(equal(false, true)).toBe(false);
+      expect(equal(0, 0)).toBe(true);
+      expect(equal(1, 1)).toBe(true);
+      expect(equal(NaN, NaN)).toBe(true);
+      expect(equal(NaN, null)).toBe(false);
+      expect(equal(null, NaN)).toBe(false);
+      expect(equal(Infinity, NaN)).toBe(false);
+      expect(equal(Infinity, Infinity)).toBe(true);
+      expect(equal(-Infinity, -Infinity)).toBe(true);
+      expect(equal(Infinity, -Infinity)).toBe(false);
+      expect(equal(-1, 1)).toBe(false);
+      expect(equal('a', 'b')).toBe(false);
+      expect(equal('a', 'a')).toBe(true);
+      expect(equal(null, undefined)).toBe(false);
+      expect(equal(undefined, null)).toBe(false);
+      expect(equal(undefined, undefined)).toBe(true);
+      expect(equal(null, null)).toBe(true);
     });
   });
 
