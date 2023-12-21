@@ -58,7 +58,7 @@ computing the total price
 
 Note that even when the quantity is 0, the total is recomputed when the unit price changes.
 
-In Tansu, while the same [derived](https://amadeusitgroup.github.io/tansu/tansu.derived.html) function is still available, the [computed](https://amadeusitgroup.github.io/tansu/tansu.computed.html) function is also available, with which it is only necessary to provide a function, and the list of dependencies is detected automatically and dynamically:
+In Tansu, while the same [derived](https://amadeusitgroup.github.io/tansu/functions/derived.html) function is still available, the [computed](https://amadeusitgroup.github.io/tansu/functions/computed.html) function is also available, with which it is only necessary to provide a function, and the list of dependencies is detected automatically and dynamically:
 
 ```typescript
 import {writable, computed} from '@amadeus-it-group/tansu';
@@ -115,7 +115,7 @@ Process end
 
 The fullName store successively went through different states, including an inconsistent one, as `Sherlock Lupin` does not exist! Even if it can be seen as just an intermediate state, it is **fundamental** for a state management to only manage consistent data in order to prevent issues and optimize the code.
 
-In Tansu, the [batch function](https://amadeusitgroup.github.io/tansu/tansu.batch.html) is available to defer **synchronously** (another important point) the derived (or computed) calculation and solve all kind of multiple dependencies issues.
+In Tansu, the [batch function](https://amadeusitgroup.github.io/tansu/functions/batch.html) is available to defer **synchronously** (another important point) the derived (or computed) calculation and solve all kind of multiple dependencies issues.
 
 The previous example is resolved this way:
 

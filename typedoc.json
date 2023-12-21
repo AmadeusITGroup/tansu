@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "kindSortOrder": ["Function", "Class"],
+  "out": "./dist/docs",
+  "tsconfig": "./tsconfig.d.json",
+  "visibilityFilters": {}
+}
