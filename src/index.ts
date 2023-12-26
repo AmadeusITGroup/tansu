@@ -98,6 +98,7 @@ export interface SubscribableStore<T> {
   /**
    * A method that makes it possible to register "interest" in store value changes over time.
    * It is called each and every time the store's value changes.
+   *
    * A registered subscriber is notified synchronously with the latest store value.
    *
    * @param subscriber - a subscriber in a form of a {@link SubscriberFunction} or a {@link SubscriberObject}. Returns a {@link Unsubscriber} (function or object with the `unsubscribe` method) that can be used to unregister and stop receiving notifications of store value changes.
@@ -120,6 +121,7 @@ export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
 
 /**
  * This interface augments the base {@link SubscribableStore} interface by requiring the return value of the subscribe method to be both a function and an object with the `unsubscribe` method.
+ *
  * For {@link https://rxjs.dev/api/index/interface/InteropObservable | interoperability with rxjs}, it also implements the `[Symbol.observable]` method.
  */
 export interface Readable<T> extends SubscribableStore<T>, InteropObservable<T> {
@@ -294,6 +296,7 @@ export function asWritable<T, W = T>(
  * and optionally the {@link Writable.set|set} and the {@link Writable.update|update} function of the
  * {@link WritableSignal} interface.
  * If the set function is not specified, a noop function is used.
+ *
  * If the update function is not specified, a default function that calls set is used.
  * @returns A wrapper which only exposes the {@link WritableSignal} interface and the given extra properties.
  */
@@ -354,7 +357,7 @@ const checkIterations = (iterations: number) => {
  * It is possible to have nested calls of batch, in which case only the first
  * (outer) call has an effect, inner calls only call the provided function.
  *
- * @param fn - a function that can update stores. Its return value is
+ * @param fn - a function that can update stores. Its returned value is
  * returned by the batch function.
  *
  * @example
@@ -745,6 +748,7 @@ export interface OnUseArgument<T> {
 /**
  * Type of a function that is called when the number of subscribers changes from 0 to 1
  * (but not called when the number of subscribers changes from 1 to 2, ...).
+ *
  * If it returns a function, that function will be called when the number of subscribers changes from 1 to 0.
  */
 export type OnUseFn<T> = (arg: OnUseArgument<T>) => void | Unsubscriber;
@@ -763,14 +767,16 @@ export interface StoreOptions<T> {
   /**
    * Custom function to compare two values, that should return true if they
    * are equal.
+   *
    * It is called when setting a new value to avoid doing anything
    * (such as notifying subscribers) if the value did not change.
+   *
+   * @remarks
    * The default logic (when this option is not present) is to return false
    * if `a` is a function or an object, or if `a` and `b` are different
    * according to `Object.is`.
    *
-   * @remarks
-   * equal takes precedence over {@link StoreOptions.notEqual} if both
+   * {@link StoreOptions.equal|equal} takes precedence over {@link StoreOptions.notEqual|notEqual} if both
    * are defined.
    *
    * @param a - First value to compare.
@@ -782,14 +788,16 @@ export interface StoreOptions<T> {
   /**
    * Custom function to compare two values, that should return true if they
    * are different.
+   *
    * It is called when setting a new value to avoid doing anything
    * (such as notifying subscribers) if the value did not change.
+   *
+   * @remarks
    * The default logic (when this option is not present) is to return true
    * if `a` is a function or an object, or if `a` and `b` are different
    * according to `Object.is`.
    *
-   * @remarks
-   * {@link StoreOptions.equal} takes precedence over notEqual if both
+   * {@link StoreOptions.equal} takes precedence over {@link StoreOptions.notEqual|notEqual} if both
    * are defined.
    *
    * @deprecated Use {@link StoreOptions.equal} instead
@@ -857,8 +865,10 @@ const applyStoreOptions = <T, S extends Store<T>>(store: S, options: StoreOption
  * A convenience function to create {@link Readable} store instances.
  * @param value - Initial value of a readable store.
  * @param options - Either an object with {@link StoreOptions | store options}, or directly the onUse function.
+ *
  * The onUse function is a function called when the number of subscribers changes from 0 to 1
  * (but not called when the number of subscribers changes from 1 to 2, ...).
+ *
  * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
  * @example Sample with an onUse function
@@ -891,8 +901,10 @@ export function readable<T>(
  * A convenience function to create {@link Writable} store instances.
  * @param value - initial value of a new writable store.
  * @param options - Either an object with {@link StoreOptions | store options}, or directly the onUse function.
+ *
  * The onUse function is a function called when the number of subscribers changes from 0 to 1
  * (but not called when the number of subscribers changes from 1 to 2, ...).
+ *
  * If a function is returned, it will be called when the number of subscribers changes from 1 to 0.
  *
  * @example
@@ -928,9 +940,10 @@ export type StoresInput = StoreInput<any> | readonly [StoreInput<any>, ...StoreI
  * @remarks
  *
  * If the type given as a parameter is a single {@link StoreInput}, the type of the value
- * of that {@link StoreInput} is returned. If the type given as a parameter is one of an array
- * of {@link StoreInput}, the returned type is the type of an array containing the value of each
- * store in the same order.
+ * of that {@link StoreInput} is returned.
+ *
+ * If the type given as a parameter is one of an array of {@link StoreInput}, the returned type
+ * is the type of an array containing the value of each store in the same order.
  */
 export type StoresInputValues<S> = S extends StoreInput<infer T>
   ? T
@@ -1066,10 +1079,13 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
  * Each time the state of one of the dependent stores changes, a provided derive function is called to compute a new, derived state.
  *
  * @param stores - a single store or an array of dependent stores
- * @param options - either an object with store options including a derive function or directly the derive function itself.
- * The derive function is used to compute a new state based on the latest values of dependent stores
+ * @param options - either an object with store options, including a derive function, or the derive function itself directly.
+ * The derive function is used to compute a new state based on the latest values of dependent stores.
  *
- * @example
+ * Alternatively, this function can accept a second argument, `set`, to manage asynchronous values.
+ * If you return a function from the callback, it will be called when the callback runs again, or the last subscriber unsubscribes.
+ *
+ * @example synchronous
  * ```typescript
  * const x$ = writable(2);
  * const y$ = writable(3);
@@ -1081,7 +1097,26 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
  * });
  *
  * x$.set(3); // will re-evaluate the `([x, y]) => x + y` function and log 6 as this is the new state of the derived store
+ *
  * ```
+ *
+ *  @example asynchronous
+ * ```typescript
+ * const x$ = writable(2);
+ * const y$ = writable(3);
+ *
+ * const sum$ = derived([x$, $y], ([x, y], set) => {
+ *    const timeoutId = setTimeout(() => set(x + y)));
+ *    return () => clearTimeout(timeoutId);
+ * }, <number>undefined);
+ *
+ * // will log undefined (the default value), then 5 asynchronously
+ * sum$.subscribe((value) => {
+ *    console.log(value)
+ * });
+ *
+ * ```
+
  */
 export function derived<T, S extends StoresInput>(
   stores: S,
@@ -1326,17 +1361,20 @@ abstract class ComputedStore<T> extends Store<T> {
  * @remarks
  *
  * The computation function is first called the first time the store is used.
+ *
  * It can use the value of other stores or observables and the computation function is called again if the value of those dependencies
  * changed, as long as the store is still used.
+ *
  * Dependencies are detected automatically as the computation function gets their value either by calling the stores
  * as a function (as it is possible with stores implementing {@link ReadableSignal}), or by calling the {@link get} function
  * (with a store or any observable). If some calls made by the function should not be tracked as dependencies, it is possible
  * to wrap them in a call to {@link untrack}.
+ *
  * Note that dependencies can change between calls of the computation function. Internally, tansu will subscribe to new dependencies
  * when they are used and unsubscribe from dependencies that are no longer used after the call of the computation function.
  *
  * @param fn - computation function that returns the value of the store
- * @param options - store options
+ * @param options - store option. Allows to define the {@link StoreOptions.equal|equal} function, if needed
  * @returns store containing the value returned by the computation function
  */
 export function computed<T>(
