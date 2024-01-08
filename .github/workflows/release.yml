@@ -23,6 +23,7 @@ jobs:
       - run: npm ci
       - name: npm version
         working-directory: src
+        if: inputs.version != 'doconly'
         run: |
           git config --global user.name github-actions
           git config --global user.email github-actions@github.com
@@ -37,9 +38,11 @@ jobs:
           npm whoami
           npm publish --access=public --provenance
         working-directory: dist/package
+        if: inputs.version != 'doconly'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: git push origin master v${{ inputs.version }}
+        if: inputs.version != 'doconly'
       - uses: actions/checkout@v4
         with:
           ref: gh-pages
