@@ -21,12 +21,13 @@ jobs:
           cache: npm
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
+      - run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
       - name: npm version
         working-directory: src
         if: inputs.version != 'doconly'
         run: |
-          git config --global user.name github-actions
-          git config --global user.email github-actions@github.com
           npm version ${{ inputs.version }}
           git add package.json
           git commit -m v${{ inputs.version }}
