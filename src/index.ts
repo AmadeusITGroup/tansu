@@ -949,15 +949,15 @@ export type StoresInputValues<S> = S extends StoreInput<infer T>
   ? T
   : { [K in keyof S]: S[K] extends StoreInput<infer T> ? T : never };
 
-type SyncDeriveFn<T, S> = (values: StoresInputValues<S>) => T;
-interface SyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
+export type SyncDeriveFn<T, S> = (values: StoresInputValues<S>) => T;
+export interface SyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
   derive: SyncDeriveFn<T, S>;
 }
-type AsyncDeriveFn<T, S> = (
+export type AsyncDeriveFn<T, S> = (
   values: StoresInputValues<S>,
   set: OnUseArgument<T>
 ) => Unsubscriber | void;
-interface AsyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
+export interface AsyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
   derive: AsyncDeriveFn<T, S>;
 }
 type DeriveFn<T, S> = SyncDeriveFn<T, S> | AsyncDeriveFn<T, S>;

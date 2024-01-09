@@ -4,6 +4,8 @@
   "excludePrivate": true,
   "kindSortOrder": ["Function", "Class"],
   "out": "./dist/docs",
+  "treatValidationWarningsAsErrors": true,
+  "intentionallyNotExported": ["__global.SymbolConstructor.observable"],
   "tsconfig": "./tsconfig.d.json",
   "visibilityFilters": {}
 }
