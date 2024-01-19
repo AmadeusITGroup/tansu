@@ -945,9 +945,10 @@ export type StoresInput = StoreInput<any> | readonly [StoreInput<any>, ...StoreI
  * If the type given as a parameter is one of an array of {@link StoreInput}, the returned type
  * is the type of an array containing the value of each store in the same order.
  */
-export type StoresInputValues<S> = S extends StoreInput<infer T>
-  ? T
-  : { [K in keyof S]: S[K] extends StoreInput<infer T> ? T : never };
+export type StoresInputValues<S> =
+  S extends StoreInput<infer T>
+    ? T
+    : { [K in keyof S]: S[K] extends StoreInput<infer T> ? T : never };
 
 export type SyncDeriveFn<T, S> = (values: StoresInputValues<S>) => T;
 export interface SyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
