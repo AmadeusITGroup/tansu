@@ -1090,7 +1090,7 @@ export abstract class DerivedStore<T, S extends StoresInput = StoresInput> exten
  * ```typescript
  * const x$ = writable(2);
  * const y$ = writable(3);
- * const sum$ = derived([x$, $y], ([x, y]) => x + y);
+ * const sum$ = derived([x$, y$], ([x, y]) => x + y);
  *
  * // will log 5 upon subscription
  * sum$.subscribe((value) => {
