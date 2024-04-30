@@ -6,6 +6,6 @@
     "moduleResolution": "Node",
     "strict": true,
     "noImplicitOverride": true,
-    "useDefineForClassFields": false,
-  },
+    "useDefineForClassFields": false
+  }
 }
