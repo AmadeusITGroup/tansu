@@ -25,11 +25,10 @@ jobs:
           git config --global user.name github-actions
           git config --global user.email github-actions@github.com
       - name: npm version
-        working-directory: src
         if: inputs.version != 'doconly'
         run: |
           npm version ${{ inputs.version }}
-          git add package.json
+          git add package.json package-lock.json
           git commit -m v${{ inputs.version }}
           git tag v${{ inputs.version }}
       - run: git show HEAD

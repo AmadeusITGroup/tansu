@@ -1,6 +1,44 @@
 {
   "name": "@amadeus-it-group/tansu",
   "type": "module",
+  "version": "1.0.0",
+  "description": "tansu is a lightweight, push-based framework-agnostic state management library. It borrows the ideas and APIs originally designed and implemented by Svelte stores and extends them with computed and batch.",
+  "keywords": [
+    "signals",
+    "signal",
+    "agnostic",
+    "reactive",
+    "store",
+    "state",
+    "model",
+    "interop",
+    "observable",
+    "computed",
+    "derived",
+    "readable",
+    "writable",
+    "svelte",
+    "state management",
+    "angular"
+  ],
+  "typings": "./dist/package/index.d.ts",
+  "main": "./dist/package/index.cjs",
+  "module": "./dist/package/index.js",
+  "exports": {
+    "types": "./dist/package/index.d.ts",
+    "require": "./dist/package/index.cjs",
+    "default": "./dist/package/index.js"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmadeusITGroup/tansu.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AmadeusITGroup/tansu/issues"
+  },
+  "homepage": "https://github.com/AmadeusITGroup/tansu#readme",
+  "private": true,
   "devDependencies": {
     "@angular/common": "^18.0.1",
     "@angular/compiler": "^18.0.1",
@@ -39,8 +77,8 @@
     "build:rollup": "rollup --failAfterWarnings -c",
     "build:dts": "tsc -p tsconfig.d.json",
     "build:api": "api-extractor run",
-    "build:package": "cp README.md src/package.json dist/package",
-    "build": "npm run clean && npm run build:rollup && npm run build:dts && npm run build:api && npm run build:package",
+    "build": "npm run clean && npm run build:rollup && npm run build:dts && npm run build:api",
+    "prepare": "npm run build",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
     "docs": "typedoc"
@@ -55,5 +93,8 @@
     "extends": [
       "@commitlint/config-conventional"
     ]
-  }
+  },
+  "files": [
+    "dist/package"
+  ]
 }
