@@ -444,34 +444,6 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should not call again listeners when only resuming subscribers', () => {
-      class BasicStore extends Store<object> {
-        public override pauseSubscribers(): void {
-          super.pauseSubscribers();
-        }
-        public override resumeSubscribers(): void {
-          super.resumeSubscribers();
-        }
-        public override set(value: object): void {
-          super.set(value);
-        }
-      }
-      const initialValue = {};
-      const newValue = {};
-      const store = new BasicStore(initialValue);
-      const calls: object[] = [];
-      const unsubscribe = store.subscribe((v) => calls.push(v));
-      expect(calls.length).toBe(1);
-      expect(calls[0]).toBe(initialValue);
-      store.pauseSubscribers();
-      store.resumeSubscribers();
-      expect(calls.length).toBe(1);
-      store.set(newValue);
-      expect(calls.length).toBe(2);
-      expect(calls[1]).toBe(newValue);
-      unsubscribe();
-    });
-
     it('asReadable should be compatible with rxjs (BehaviorSubject)', () => {
       const behaviorSubject = new BehaviorSubject(0);
       const store = asReadable(behaviorSubject);
@@ -1601,7 +1573,7 @@ describe('stores', () => {
         wrongDerivedStore.subscribe(() => {
           reachedSubscriber = true;
         });
-      }).toThrowError('reached maximum number of store changes in one shot');
+      }).toThrowError('Could not stabilize the computation.');
       expect(reachedSubscriber).toBe(false);
     });
 
@@ -1620,7 +1592,7 @@ describe('stores', () => {
       expect(values).toEqual([0]);
       expect(() => {
         store.set(-1);
-      }).toThrowError('reached maximum number of store changes in one shot');
+      }).toThrowError('Could not stabilize the computation.');
       unsubscribe();
       expect(values).toEqual([0]);
     });
@@ -2986,7 +2958,7 @@ describe('stores', () => {
       const values: number[] = [];
       expect(() => {
         myValue.subscribe((value) => values.push(value));
-      }).toThrowError('recursive computed');
+      }).toThrowError('Detected cycle in computations.');
       expect(values).toEqual([]);
     });
 
@@ -2998,7 +2970,7 @@ describe('stores', () => {
       expect(values).toEqual([0]);
       expect(() => {
         recursive.set(true);
-      }).toThrowError('recursive computed');
+      }).toThrowError('Detected cycle in computations.');
     });
 
     it('should throw when changing a value from computed would result in an infinite loop (on subscribe)', () => {
@@ -3013,7 +2985,7 @@ describe('stores', () => {
         wrongComputed.subscribe(() => {
           reachedSubscriber = true;
         });
-      }).toThrowError('reached maximum number of store changes in one shot');
+      }).toThrowError('Could not stabilize the computation.');
       expect(reachedSubscriber).toBe(false);
     });
 
@@ -3032,7 +3004,7 @@ describe('stores', () => {
       });
       expect(() => {
         store.set(11);
-      }).toThrowError('reached maximum number of store changes in one shot');
+      }).toThrowError('Could not stabilize the computation.');
       expect(values).toEqual([0]);
     });
 
