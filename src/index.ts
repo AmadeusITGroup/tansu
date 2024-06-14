@@ -60,7 +60,7 @@ export interface SubscriberObject<T> {
   [oldSubscription]?: Unsubscriber;
 }
 
-interface PrivateSubscriberObject<T> extends Omit<SubscriberObject<T>, 'oldSubscription'> {
+interface PrivateSubscriberObject<T> extends Omit<SubscriberObject<T>, typeof oldSubscription> {
   _value: T;
   _valueIndex: number;
   _paused: boolean;
