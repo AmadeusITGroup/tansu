@@ -471,7 +471,7 @@ export const equal = <T>(a: T, b: T): boolean =>
  * ```
  */
 export abstract class Store<T> implements Readable<T> {
-  #subscribers = new Set<PrivateSubscriberObject<T>>();
+  #subscribers: PrivateSubscriberObject<T>[] = [];
   #cleanupFn: null | UnsubscribeFunction = null;
   #subscribersPaused = false;
   #valueIndex = 1;
@@ -503,7 +503,7 @@ export abstract class Store<T> implements Readable<T> {
 
   private [queueProcess](): void {
     const valueIndex = this.#valueIndex;
-    for (const subscriber of [...this.#subscribers]) {
+    for (const subscriber of this.#subscribers) {
       if (this.#subscribersPaused || this.#valueIndex !== valueIndex) {
         // the value of the store can change while notifying subscribers
         // in that case, let's just stop notifying subscribers
@@ -605,7 +605,7 @@ export abstract class Store<T> implements Readable<T> {
     if (!this.#subscribersPaused) {
       this.#subscribersPaused = true;
       queue.delete(this as any);
-      for (const subscriber of [...this.#subscribers]) {
+      for (const subscriber of this.#subscribers) {
         if (subscriber._valueIndex === 0 || subscriber._paused) {
           // ignore subscribers which were not yet called synchronously or are already paused
           continue;
@@ -704,9 +704,9 @@ export abstract class Store<T> implements Readable<T> {
         subscriberObject._valueIndex = oldSubscriberObject._valueIndex;
       }
     }
-    this.#subscribers.add(subscriberObject);
+    this.#subscribers.push(subscriberObject);
     batch(() => {
-      if (this.#subscribers.size == 1) {
+      if (this.#subscribers.length == 1) {
         this.#start();
       } else {
         this[triggerUpdate]();
@@ -715,13 +715,17 @@ export abstract class Store<T> implements Readable<T> {
     this.#notifySubscriber(subscriberObject);
 
     const unsubscribe = () => {
-      const removed = this.#subscribers.delete(subscriberObject);
+      const indexInSubscribers = this.#subscribers.indexOf(subscriberObject);
+      const removed = indexInSubscribers > -1;
+      if (removed) {
+        this.#subscribers.splice(indexInSubscribers, 1);
+      }
       subscriberObject.next = noop;
       subscriberObject.pause = noop;
       subscriberObject.resume = noop;
       if (removed) {
         this.#oldSubscriptions.set(unsubscribe, subscriberObject);
-        if (this.#subscribers.size === 0) {
+        if (this.#subscribers.length === 0) {
           this.#stop();
         }
       }
