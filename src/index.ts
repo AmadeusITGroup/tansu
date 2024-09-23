@@ -325,7 +325,7 @@ export function asWritable<T, U, W = T>(
 const triggerUpdate = Symbol();
 const queueProcess = Symbol();
 let willProcessQueue = false;
-const queue = new Set<{ [queueProcess](): void }>();
+const queue: { [queueProcess](): void }[] = [];
 
 const MAX_STORE_PROCESSING_IN_QUEUE = 1000;
 const checkIterations = (iterations: number) => {
@@ -385,15 +385,17 @@ export const batch = <T>(fn: () => T): T => {
     if (needsProcessQueue) {
       try {
         const storePasses = new Map<{ [queueProcess](): void }, number>();
-        for (const store of queue) {
+        while (queue.length > 0) {
+          const store = queue.shift()!;
           const storeCount = storePasses.get(store) ?? 0;
           checkIterations(storeCount);
           storePasses.set(store, storeCount + 1);
-          queue.delete(store);
           store[queueProcess]();
         }
       } finally {
-        queue.clear();
+        if (queue.length > 0) {
+          queue.splice(0, queue.length);
+        }
         willProcessQueue = false;
       }
     }
@@ -604,7 +606,10 @@ export abstract class Store<T> implements Readable<T> {
   protected pauseSubscribers(): void {
     if (!this.#subscribersPaused) {
       this.#subscribersPaused = true;
-      queue.delete(this as any);
+      const indexInQueue = queue.indexOf(this as any);
+      if (indexInQueue > -1) {
+        queue.splice(indexInQueue, 1);
+      }
       for (const subscriber of [...this.#subscribers]) {
         if (subscriber._valueIndex === 0 || subscriber._paused) {
           // ignore subscribers which were not yet called synchronously or are already paused
@@ -628,7 +633,7 @@ export abstract class Store<T> implements Readable<T> {
     if (this.#subscribersPaused) {
       this.#subscribersPaused = false;
       batch(() => {
-        queue.add(this as any);
+        queue.push(this as any);
       });
     }
   }
