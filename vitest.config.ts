@@ -6,7 +6,7 @@ export default defineConfig({
     include: ['./**/*.spec.ts'],
     environment: 'happy-dom',
     coverage: {
-      provider: 'istanbul',
+      provider: 'v8',
       reporter: ['lcov'],
     },
   },
