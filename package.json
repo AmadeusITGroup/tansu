@@ -76,7 +76,7 @@
     "tdd:ui": "vitest --ui",
     "benchmark": "vitest bench --run",
     "clean": "rm -rf dist temp",
-    "lint": "eslint src/{,**/}*.ts",
+    "lint": "eslint {src,benchmarks}/{,**/}*.ts",
     "build:rollup": "rollup --failAfterWarnings -c",
     "build:dts": "tsc -p tsconfig.d.json",
     "build:api": "api-extractor run",
