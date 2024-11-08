@@ -9,13 +9,14 @@ import type {
   Unsubscriber,
 } from '../types';
 import { getRawStore } from './exposeRawStores';
-import type { Consumer, ProducerConsumerLink, RawStore } from './store';
-import { isLinkUpToDate, RawStoreFlags, updateLink, updateLinkProducerValue } from './store';
+import type { BaseLink, Consumer, RawStore } from './store';
+import { RawStoreFlags, updateLinkProducerValue } from './store';
 import {
   COMPUTED_ERRORED,
   COMPUTED_UNSET,
   RawStoreComputedOrDerived,
 } from './storeComputedOrDerived';
+import type { RawStoreWritable } from './storeWritable';
 import { normalizeUnsubscribe } from './unsubscribe';
 
 abstract class RawStoreDerived<T, S extends StoresInput>
@@ -24,7 +25,7 @@ abstract class RawStoreDerived<T, S extends StoresInput>
 {
   arrayMode: boolean;
   producers: RawStore<any>[];
-  producerLinks: ProducerConsumerLink<any>[] | null = null;
+  producerLinks: BaseLink<any>[] | null = null;
   cleanUpFn: UnsubscribeFunction | null = null;
   override flags = RawStoreFlags.HAS_VISIBLE_ONUSE | RawStoreFlags.DIRTY;
 
@@ -69,8 +70,9 @@ abstract class RawStoreDerived<T, S extends StoresInput>
     let alreadyUpToDate = this.value !== COMPUTED_UNSET;
     for (let i = 0, l = producerLinks.length; i < l; i++) {
       const link = producerLinks[i];
+      const producer = link.producer;
       updateLinkProducerValue(link);
-      if (!isLinkUpToDate(link)) {
+      if (!producer.isLinkUpToDate(link)) {
         alreadyUpToDate = false;
       }
     }
@@ -80,7 +82,7 @@ abstract class RawStoreDerived<T, S extends StoresInput>
   override recompute(): void {
     try {
       this.callCleanUpFn();
-      const values = this.producerLinks!.map((link) => updateLink(link));
+      const values = this.producerLinks!.map((link) => link.producer.updateLink(link));
       this.cleanUpFn = normalizeUnsubscribe(this.derive(this.arrayMode ? values : values[0]));
     } catch (error) {
       this.error = error;
@@ -120,7 +122,7 @@ export class RawStoreSyncDerived<T, S extends StoresInput> extends RawStoreDeriv
   }
 }
 
-export const createOnUseArg = <T>(store: RawStore<T>): OnUseArgument<T> => {
+export const createOnUseArg = <T>(store: RawStoreWritable<T>): OnUseArgument<T> => {
   const setFn = store.set.bind(store) as any;
   setFn.set = setFn;
   setFn.update = store.update.bind(store);

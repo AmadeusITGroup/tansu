@@ -1,7 +1,7 @@
-import type { RawStore } from './store';
+import type { BaseLink, RawStore } from './store';
 
 export interface ActiveConsumer {
-  addProducer: <T>(store: RawStore<T>) => T;
+  addProducer: <T, L extends BaseLink<T>>(store: RawStore<T, L>) => T;
 }
 
 export let activeConsumer: ActiveConsumer | null = null;
