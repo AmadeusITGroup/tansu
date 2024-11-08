@@ -1,4 +1,5 @@
-import { RawStoreFlags, type Consumer } from './store';
+import type { Consumer } from './store';
+import { RawStoreFlags } from './store';
 import { RawStoreTrackingUsage } from './storeTrackingUsage';
 import { setActiveConsumer } from './untrack';
 

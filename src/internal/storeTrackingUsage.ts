@@ -1,4 +1,5 @@
-import { checkNotInNotificationPhase, RawStore, RawStoreFlags } from './store';
+import { RawStoreFlags } from './store';
+import { checkNotInNotificationPhase, RawStoreWritable } from './storeWritable';
 import { activeConsumer, untrack } from './untrack';
 
 let flushUnusedQueue: RawStoreTrackingUsage<any>[] | null = null;
@@ -25,7 +26,7 @@ export const flushUnused = (): void => {
   }
 };
 
-export abstract class RawStoreTrackingUsage<T> extends RawStore<T> {
+export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
   abstract startUse(): void;
   abstract endUse(): void;
 

@@ -12,7 +12,6 @@ import {
   rawStoreSymbol,
   symbolObservable,
 } from './internal/exposeRawStores';
-import { noop, RawStore } from './internal/store';
 import { RawStoreComputed } from './internal/storeComputed';
 import { RawStoreConst } from './internal/storeConst';
 import {
@@ -22,6 +21,8 @@ import {
   RawStoreSyncDerived,
 } from './internal/storeDerived';
 import { RawStoreWithOnUse } from './internal/storeWithOnUse';
+import { RawStoreWritable } from './internal/storeWritable';
+import { noop } from './internal/subscribeConsumer';
 import { untrack } from './internal/untrack';
 import type {
   AsyncDeriveFn,
@@ -183,18 +184,20 @@ export abstract class Store<T> implements Readable<T> {
    */
   constructor(value: T) {
     let rawStore;
-    if (value instanceof RawStore) {
+    if (value instanceof RawStoreWritable) {
       rawStore = value;
     } else {
       const onUse = this.onUse;
-      rawStore = onUse ? new RawStoreWithOnUse(value, onUse.bind(this)) : new RawStore(value);
+      rawStore = onUse
+        ? new RawStoreWithOnUse(value, onUse.bind(this))
+        : new RawStoreWritable(value);
       rawStore.equalFn = (a, b) => this.equal(a, b);
     }
     this[rawStoreSymbol] = rawStore;
   }
 
   /** @internal */
-  [rawStoreSymbol]: RawStore<T>;
+  [rawStoreSymbol]: RawStoreWritable<T>;
 
   /**
    * Compares two values and returns true if they are equal.
@@ -246,11 +249,11 @@ export abstract class Store<T> implements Readable<T> {
    * @param value - value to be used as the new state of a store.
    */
   protected set(value: T): void {
-    getRawStore(this).set(value);
+    this[rawStoreSymbol].set(value);
   }
 
   get(): T {
-    return getRawStore(this).get();
+    return this[rawStoreSymbol].get();
   }
 
   /**
@@ -260,7 +263,7 @@ export abstract class Store<T> implements Readable<T> {
    * @param updater - a function that takes the current state as an argument and returns the new state.
    */
   protected update(updater: Updater<T>): void {
-    getRawStore(this).update(updater);
+    this[rawStoreSymbol].update(updater);
   }
 
   /**
@@ -294,7 +297,7 @@ export abstract class Store<T> implements Readable<T> {
    * @param subscriber - see {@link SubscribableStore.subscribe}
    */
   subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
-    return getRawStore(this).subscribe(subscriber);
+    return this[rawStoreSymbol].subscribe(subscriber);
   }
 
   [symbolObservable](): this {
@@ -308,7 +311,7 @@ const createStoreWithOnUse = <T>(initValue: T, onUse: OnUseFn<T>) => {
   return store;
 };
 
-const applyStoreOptions = <T, S extends RawStore<T>>(
+const applyStoreOptions = <T, S extends RawStoreWritable<T>>(
   store: S,
   options?: Omit<StoreOptions<T>, 'onUse'>
 ): S => {
@@ -381,7 +384,7 @@ export function writable<T>(value: T, options?: StoreOptions<T> | OnUseFn<T>): W
   }
   const onUse = options?.onUse;
   const store = applyStoreOptions(
-    onUse ? createStoreWithOnUse(value, onUse) : new RawStore(value),
+    onUse ? createStoreWithOnUse(value, onUse) : new RawStoreWritable(value),
     options
   );
   const res = exposeRawStore(store) as any;

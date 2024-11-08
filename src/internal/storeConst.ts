@@ -1,32 +1,37 @@
-import type { Subscriber, UnsubscribeFunction, UnsubscribeObject } from '../types';
-import type { Consumer, ProducerConsumerLink } from './store';
-import { checkNotInNotificationPhase, RawStore, toSubscriberObject } from './store';
+import type { Subscriber, Unsubscriber } from '../types';
+import type { BaseLink, Consumer, RawStore } from './store';
+import { RawStoreFlags } from './store';
+import { checkNotInNotificationPhase } from './storeWritable';
+import { toSubscriberObject } from './subscribeConsumer';
 import { noopUnsubscribe } from './unsubscribe';
 
-export class RawStoreConst<T> extends RawStore<T> {
-  link: ProducerConsumerLink<T> = {
-    producer: this,
-    consumer: null as any,
-    indexInProducer: -1,
-    skipMarkDirty: false,
-    value: this.value,
-    version: this.version,
-  };
+export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
+  flags = RawStoreFlags.NONE;
+  constructor(public readonly value: T) {}
 
-  override get(): T {
+  newLink(_consumer: Consumer): BaseLink<T> {
+    return {
+      producer: this,
+    };
+  }
+  registerConsumer(link: BaseLink<T>): BaseLink<T> {
+    return link;
+  }
+  unregisterConsumer(_link: BaseLink<T>): void {}
+  updateValue(_link?: BaseLink<T> | undefined): void {}
+  isLinkUpToDate(_link: BaseLink<T>): boolean {
+    return true;
+  }
+  updateLink(_link: BaseLink<T>): T {
+    return this.value;
+  }
+  get(): T {
     checkNotInNotificationPhase();
     return this.value;
   }
-  override subscribe(subscriber: Subscriber<T>): UnsubscribeFunction & UnsubscribeObject {
+  subscribe(subscriber: Subscriber<T>): Unsubscriber {
     checkNotInNotificationPhase();
     toSubscriberObject(subscriber).next(this.value);
     return noopUnsubscribe;
   }
-  override newLink(_consumer: Consumer | null): ProducerConsumerLink<T> {
-    return this.link;
-  }
-  override registerConsumer(link: ProducerConsumerLink<T>): ProducerConsumerLink<T> {
-    return link;
-  }
-  override unregisterConsumer(_link: ProducerConsumerLink<T>): void {}
 }

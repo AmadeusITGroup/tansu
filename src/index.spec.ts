@@ -30,11 +30,12 @@ import {
   writable,
 } from './index';
 import { rawStoreSymbol } from './internal/exposeRawStores';
-import { RawStoreFlags, type RawStore } from './internal/store';
+import { RawStoreFlags } from './internal/store';
 import { flushUnused } from './internal/storeTrackingUsage';
+import type { RawStoreWritable } from './internal/storeWritable';
 
 const expectCorrectlyCleanedUp = <T>(store: StoreInput<T>) => {
-  const rawStore = (store as any)[rawStoreSymbol] as RawStore<T>;
+  const rawStore = (store as any)[rawStoreSymbol] as RawStoreWritable<T>;
   expect(rawStore.consumerLinks?.length ?? 0).toBe(0);
   expect(rawStore.flags & RawStoreFlags.START_USE_CALLED).toBeFalsy();
 };

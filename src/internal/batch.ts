@@ -1,6 +1,6 @@
-import type { SubscribeConsumer } from './store';
+import type { SubscribeConsumer } from './subscribeConsumer';
 
-export const subscribersQueue: SubscribeConsumer<any>[] = [];
+export const subscribersQueue: SubscribeConsumer<any, any>[] = [];
 let willProcessQueue = false;
 
 /**

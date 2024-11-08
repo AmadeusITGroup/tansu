@@ -1,17 +1,11 @@
-import type { Consumer, ProducerConsumerLink, RawStore } from './store';
-import {
-  epoch,
-  isLinkUpToDate,
-  notificationPhase,
-  RawStoreFlags,
-  updateLink,
-  updateLinkProducerValue,
-} from './store';
+import type { BaseLink, Consumer, RawStore } from './store';
+import { RawStoreFlags, updateLinkProducerValue } from './store';
 import {
   COMPUTED_ERRORED,
   COMPUTED_UNSET,
   RawStoreComputedOrDerived,
 } from './storeComputedOrDerived';
+import { epoch, notificationPhase } from './storeWritable';
 import { activeConsumer, setActiveConsumer, type ActiveConsumer } from './untrack';
 
 export class RawStoreComputed<T>
@@ -19,7 +13,7 @@ export class RawStoreComputed<T>
   implements Consumer, ActiveConsumer
 {
   producerIndex = 0;
-  producerLinks: ProducerConsumerLink<any>[] | null = null;
+  producerLinks: BaseLink<any>[] | null = null;
   epoch = -1;
 
   constructor(public computeFn: () => T) {
@@ -52,14 +46,14 @@ export class RawStoreComputed<T>
     return super.get();
   }
 
-  addProducer<U>(producer: RawStore<U>): U {
+  addProducer<U, L extends BaseLink<U>>(producer: RawStore<U, L>): U {
     let producerLinks = this.producerLinks;
     if (!producerLinks) {
       producerLinks = [];
       this.producerLinks = producerLinks;
     }
     const producerIndex = this.producerIndex;
-    let link = producerLinks[producerIndex];
+    let link = producerLinks[producerIndex] as L | undefined;
     if (link?.producer !== producer) {
       if (link) {
         const endIndex = Math.max(producerIndex + 1, producerLinks.length);
@@ -73,7 +67,7 @@ export class RawStoreComputed<T>
     if (producer.flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
       this.flags |= RawStoreFlags.HAS_VISIBLE_ONUSE;
     }
-    return updateLink(link);
+    return producer.updateLink(link);
   }
 
   override startUse(): void {
@@ -102,8 +96,9 @@ export class RawStoreComputed<T>
     if (producerLinks) {
       for (let i = 0, l = producerLinks.length; i < l; i++) {
         const link = producerLinks[i];
+        const producer = link.producer;
         updateLinkProducerValue(link);
-        if (!isLinkUpToDate(link)) {
+        if (!producer.isLinkUpToDate(link)) {
           return false;
         }
       }
