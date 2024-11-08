@@ -50,8 +50,10 @@ jobs:
       - name: Publish documentation
         working-directory: gh-pages
         run: |
+          mv dev ..
           rm -rf *
           cp -a ../dist/docs/* .
+          mv ../dev .
           git add .
           git commit --allow-empty -a -m "Updating from ${{ github.sha }}"
           git push origin gh-pages

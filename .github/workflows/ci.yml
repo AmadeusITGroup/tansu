@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     permissions:
-      contents: read
+      contents: write
       id-token: write
     runs-on: ubuntu-latest
     steps:
@@ -27,3 +27,13 @@ jobs:
           use_oidc: true
       - run: npm run build
       - run: npm run docs
+      - run: npm run benchmark
+      - uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 #v1.20.4
+        with:
+          name: Tansu benchmarks
+          tool: 'customBiggerIsBetter'
+          output-file-path: benchmarks.json
+          auto-push: ${{ github.event_name == 'push' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-on-alert: true
+          summary-always: true
