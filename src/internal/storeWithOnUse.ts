@@ -1,0 +1,29 @@
+import type { UnsubscribeFunction, Unsubscriber } from '../types';
+import { RawStoreFlags } from './store';
+import { RawStoreTrackingUsage } from './storeTrackingUsage';
+import { normalizeUnsubscribe } from './unsubscribe';
+
+export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
+  cleanUpFn: UnsubscribeFunction | null = null;
+  override flags = RawStoreFlags.HAS_VISIBLE_ONUSE;
+
+  constructor(
+    value: T,
+    public onUseFn: () => Unsubscriber | void
+  ) {
+    super(value);
+  }
+
+  override startUse(): void {
+    const onUseFn = this.onUseFn;
+    this.cleanUpFn = normalizeUnsubscribe(onUseFn());
+  }
+
+  override endUse(): void {
+    const cleanUpFn = this.cleanUpFn;
+    if (cleanUpFn) {
+      this.cleanUpFn = null;
+      cleanUpFn();
+    }
+  }
+}
