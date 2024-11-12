@@ -309,8 +309,7 @@ const perfTests = [
 for (const config of perfTests) {
   const { graph, counter } = makeGraph(config);
 
-  // FIXME: remove .skip when tansu is faster
-  bench.skip(
+  bench(
     `dynamic ${config.name}`,
     () => {
       counter.count = 0;
