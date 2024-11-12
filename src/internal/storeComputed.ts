@@ -56,8 +56,7 @@ export class RawStoreComputed<T>
     let link = producerLinks[producerIndex] as L | undefined;
     if (link?.producer !== producer) {
       if (link) {
-        const endIndex = Math.max(producerIndex + 1, producerLinks.length);
-        producerLinks[endIndex] = link; // push the existing link at the end (to be removed later)
+        producerLinks.push(link); // push the existing link at the end (to be removed later)
       }
       link = producer.registerConsumer(producer.newLink(this));
     }
