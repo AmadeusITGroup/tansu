@@ -1,5 +1,5 @@
-import { RunnerTestFile } from 'vitest';
-import { Reporter } from 'vitest/reporters';
+import type { RunnerTestFile } from 'vitest';
+import type { Reporter } from 'vitest/reporters';
 import { writeFile } from 'fs/promises';
 
 class JsonArrayReporter implements Reporter {
