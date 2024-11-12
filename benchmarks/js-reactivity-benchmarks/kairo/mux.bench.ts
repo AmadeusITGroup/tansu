@@ -2,6 +2,7 @@
 
 import { bench, expect } from 'vitest';
 import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 const heads = new Array(100).fill(null).map(() => writable(0));
 const mux = computed(() => {
@@ -27,5 +28,5 @@ bench(
       expect(splited[i]()).toBe(i * 2 + 1);
     }
   },
-  { throws: true }
+  { throws: true, setup }
 );

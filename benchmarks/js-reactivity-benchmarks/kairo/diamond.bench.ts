@@ -3,6 +3,7 @@
 import { bench, expect } from 'vitest';
 import type { ReadableSignal } from '../../../src';
 import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 const width = 5;
 
@@ -31,7 +32,5 @@ bench(
     }
     expect(callCounter).toBe(atleast);
   },
-  {
-    throws: true,
-  }
+  { throws: true, setup }
 );

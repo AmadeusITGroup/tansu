@@ -3,6 +3,7 @@
 import { bench } from 'vitest';
 import type { ReadableSignal, WritableSignal } from '../../src';
 import { computed, writable } from '../../src';
+import { setup } from '../gc';
 
 // Inspired by https://github.com/solidjs/solid/blob/main/packages/solid/bench/bench.cjs
 
@@ -30,7 +31,7 @@ defineBench(updateComputations1to4, COUNT * 4, 1);
 defineBench(updateComputations1to1000, COUNT * 4, 1);
 
 function defineBench(fn: (n: number, sources: any[]) => void, n: number, scount: number) {
-  bench(fn.name, () => fn(n, createDataSignals(scount, [])));
+  bench(fn.name, () => fn(n, createDataSignals(scount, [])), { throws: true, setup });
 }
 
 function onlyCreateDataSignals() {

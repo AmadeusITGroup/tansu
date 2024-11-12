@@ -3,6 +3,7 @@
 import { bench, expect } from 'vitest';
 import type { ReadableSignal, WritableSignal } from '../../src';
 import { computed, writable } from '../../src';
+import { setup } from '../gc';
 
 // from https://github.com/milomg/js-reactivity-benchmark/blob/main/src/util/pseudoRandom.ts
 
@@ -322,8 +323,6 @@ for (const config of perfTests) {
         expect(counter.count).toBe(config.expected.count);
       }
     },
-    {
-      throws: true,
-    }
+    { throws: true, setup }
   );
 }

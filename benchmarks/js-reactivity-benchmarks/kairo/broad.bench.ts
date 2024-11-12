@@ -1,8 +1,9 @@
 // adapted from https://github.com/milomg/js-reactivity-benchmark/blob/main/src/kairo/broad.ts
 
 import { bench, expect } from 'vitest';
-import { computed, writable } from '../../../src';
 import type { ReadableSignal } from '../../../src';
+import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 const loopCount = 50;
 
@@ -35,5 +36,5 @@ bench(
     }
     expect(callCounter).toBe(atleast);
   },
-  { throws: true }
+  { throws: true, setup }
 );

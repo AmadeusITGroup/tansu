@@ -2,6 +2,7 @@
 
 import { bench } from 'vitest';
 import { batch, computed, writable } from '../../src';
+import { setup } from '../gc';
 
 function fib(n: number): number {
   if (n < 2) return 1;
@@ -42,5 +43,5 @@ bench(
       });
     }
   },
-  { throws: true }
+  { throws: true, setup }
 );

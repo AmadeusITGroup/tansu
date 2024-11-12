@@ -2,6 +2,7 @@
 
 import { bench, expect } from 'vitest';
 import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 const head = writable(0);
 const double = computed(() => head() * 2);
@@ -33,5 +34,5 @@ bench(
     }
     expect(callCounter).toBe(atleast);
   },
-  { throws: true }
+  { throws: true, setup }
 );

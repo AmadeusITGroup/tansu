@@ -2,6 +2,7 @@
 
 import { bench, expect } from 'vitest';
 import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 const size = 30;
 
@@ -34,5 +35,5 @@ bench(
     }
     expect(callCounter).toBe(atleast);
   },
-  { throws: true }
+  { throws: true, setup }
 );
