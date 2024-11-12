@@ -2,6 +2,7 @@
 
 import { bench, expect } from 'vitest';
 import { computed, writable } from '../../../src';
+import { setup } from '../../gc';
 
 function busy() {
   let a = 0;
@@ -32,5 +33,5 @@ bench(
       expect(computed5()).toBe(6);
     }
   },
-  { throws: true }
+  { throws: true, setup }
 );

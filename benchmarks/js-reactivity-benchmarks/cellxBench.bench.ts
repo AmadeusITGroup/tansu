@@ -3,6 +3,7 @@
 import { bench, expect } from 'vitest';
 import { batch, computed, writable } from '../../src';
 import type { ReadableSignal } from '../../src';
+import { setup } from '../gc';
 
 // The following is an implementation of the cellx benchmark https://github.com/Riim/cellx/blob/master/perf/perf.html
 
@@ -89,5 +90,5 @@ const expected: Record<number, BenchmarkResults> = {
 
 for (const layers in expected) {
   const params = expected[layers];
-  bench(`cellx${layers}`, () => cellx(+layers, params[0], params[1]), { throws: true });
+  bench(`cellx${layers}`, () => cellx(+layers, params[0], params[1]), { throws: true, setup });
 }

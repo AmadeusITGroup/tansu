@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config';
 import JsonArrayReporter from './benchmarks/jsonArrayReporter';
 
+process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ?? ''} --expose-gc`;
+
 export default defineConfig({
   test: {
     setupFiles: ['test.ts'],
