@@ -10,7 +10,7 @@ const COUNT = 1e4;
 
 type Reader = () => number;
 
-defineBench(createDataSignals, COUNT, COUNT);
+defineBench(onlyCreateDataSignals, COUNT, COUNT);
 defineBench(createComputations0to1, COUNT, 0);
 defineBench(createComputations1to1, COUNT, COUNT);
 defineBench(createComputations2to1, COUNT / 2, COUNT);
@@ -30,8 +30,11 @@ defineBench(updateComputations1to4, COUNT * 4, 1);
 defineBench(updateComputations1to1000, COUNT * 4, 1);
 
 function defineBench(fn: (n: number, sources: any[]) => void, n: number, scount: number) {
-  const sources = createDataSignals(scount, []);
-  bench(fn.name, () => fn(n, sources));
+  bench(fn.name, () => fn(n, createDataSignals(scount, [])));
+}
+
+function onlyCreateDataSignals() {
+  // createDataSignals is already called before
 }
 
 function createDataSignals(n: number, sources: ReadableSignal<number>[]) {
@@ -130,18 +133,18 @@ function createComputations1000to1(n: number, sources: ReadableSignal<number>[])
 }
 
 function createComputation0(i: number) {
-  computed(() => i);
+  computed(() => i).subscribe(() => {});
 }
 
 function createComputation1(s1: Reader) {
-  computed(() => s1());
+  computed(() => s1()).subscribe(() => {});
 }
 function createComputation2(s1: Reader, s2: Reader) {
-  computed(() => s1() + s2());
+  computed(() => s1() + s2()).subscribe(() => {});
 }
 
 function createComputation4(s1: Reader, s2: Reader, s3: Reader, s4: Reader) {
-  computed(() => s1() + s2() + s3() + s4());
+  computed(() => s1() + s2() + s3() + s4()).subscribe(() => {});
 }
 
 // function createComputation8(
@@ -166,13 +169,13 @@ function createComputation1000(ss: ReadableSignal<number>[], offset: number) {
       sum += ss[offset + i]();
     }
     return sum;
-  });
+  }).subscribe(() => {});
 }
 
 function updateComputations1to1(n: number, sources: WritableSignal<number>[]) {
   const get1 = sources[0];
   const set1 = get1.set;
-  computed(() => get1());
+  computed(() => get1()).subscribe(() => {});
   for (let i = 0; i < n; i++) {
     set1(i);
   }
@@ -182,7 +185,7 @@ function updateComputations2to1(n: number, sources: WritableSignal<number>[]) {
   const get1 = sources[0],
     set1 = get1.set,
     get2 = sources[1];
-  computed(() => get1() + get2());
+  computed(() => get1() + get2()).subscribe(() => {});
   for (let i = 0; i < n; i++) {
     set1(i);
   }
@@ -194,7 +197,7 @@ function updateComputations4to1(n: number, sources: WritableSignal<number>[]) {
     get2 = sources[1],
     get3 = sources[2],
     get4 = sources[3];
-  computed(() => get1() + get2() + get3() + get4());
+  computed(() => get1() + get2() + get3() + get4()).subscribe(() => {});
   for (let i = 0; i < n; i++) {
     set1(i);
   }
@@ -208,7 +211,7 @@ function updateComputations1000to1(n: number, sources: WritableSignal<number>[])
       sum += sources[i]();
     }
     return sum;
-  });
+  }).subscribe(() => {});
   for (let i = 0; i < n; i++) {
     set1(i);
   }
@@ -217,8 +220,8 @@ function updateComputations1000to1(n: number, sources: WritableSignal<number>[])
 function updateComputations1to2(n: number, sources: WritableSignal<number>[]) {
   const get1 = sources[0];
   const set1 = get1.set;
-  computed(() => get1());
-  computed(() => get1());
+  computed(() => get1()).subscribe(() => {});
+  computed(() => get1()).subscribe(() => {});
   for (let i = 0; i < n / 2; i++) {
     set1(i);
   }
@@ -227,10 +230,10 @@ function updateComputations1to2(n: number, sources: WritableSignal<number>[]) {
 function updateComputations1to4(n: number, sources: WritableSignal<number>[]) {
   const get1 = sources[0];
   const set1 = get1.set;
-  computed(() => get1());
-  computed(() => get1());
-  computed(() => get1());
-  computed(() => get1());
+  computed(() => get1()).subscribe(() => {});
+  computed(() => get1()).subscribe(() => {});
+  computed(() => get1()).subscribe(() => {});
+  computed(() => get1()).subscribe(() => {});
   for (let i = 0; i < n / 4; i++) {
     set1(i);
   }
@@ -240,7 +243,7 @@ function updateComputations1to1000(n: number, sources: WritableSignal<number>[])
   const get1 = sources[0];
   const set1 = get1.set;
   for (let i = 0; i < 1000; i++) {
-    computed(() => get1());
+    computed(() => get1()).subscribe(() => {});
   }
   for (let i = 0; i < n / 1000; i++) {
     set1(i);
