@@ -4,7 +4,7 @@ import {Signal} from '../../src/wrapper.js';
 describe('Prohibited contexts', () => {
   it('allows writes during computed', () => {
     const s = new Signal.State(1);
-    const c = new Signal.Computed(() => (s.set(s.get() + 1), s.get()));
+    const c = new Signal.Computed(() => (Signal.subtle.untrack(() => s.set(s.get() + 1)), s.get()));
     expect(c.get()).toBe(2);
     expect(s.get()).toBe(2);
 
