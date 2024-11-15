@@ -37,6 +37,10 @@ export const updateLinkProducerValue = <T>(link: BaseLink<T>): void => {
   try {
     link.skipMarkDirty = true;
     link.producer.updateValue();
+    /* v8 ignore next 3 */
+    if (link.producer.flags & RawStoreFlags.DIRTY) {
+      throw new Error('assert failed: store still dirty after updating it');
+    }
   } finally {
     link.skipMarkDirty = false;
   }

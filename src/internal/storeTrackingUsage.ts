@@ -74,6 +74,10 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       this.flags |= RawStoreFlags.INSIDE_GET;
       try {
         this.updateValue();
+        /* v8 ignore next 3 */
+        if (this.flags & RawStoreFlags.DIRTY) {
+          throw new Error('assert failed: store still dirty after updating it');
+        }
         return this.readValue();
       } finally {
         this.flags &= ~RawStoreFlags.INSIDE_GET;
