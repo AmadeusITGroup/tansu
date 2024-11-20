@@ -38,6 +38,9 @@
     "url": "https://github.com/AmadeusITGroup/tansu/issues"
   },
   "homepage": "https://github.com/AmadeusITGroup/tansu#readme",
+  "dependencies": {
+    "signal-polyfill": "divdavem/signal-polyfill#e9cb7e8067b0c9e8af2ada766a7a760af45ef36e"
+  },
   "private": true,
   "devDependencies": {
     "@angular/common": "^18.2.10",

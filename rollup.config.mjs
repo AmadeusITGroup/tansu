@@ -53,4 +53,5 @@ export default defineConfig({
       },
     },
   ],
+  external: ['signal-polyfill'],
 });
