@@ -24,7 +24,7 @@ export interface BaseLink<T> {
 export interface RawStore<T, Link extends BaseLink<T> = BaseLink<T>>
   extends SignalStore<T>,
     SubscribableStore<T> {
-  flags: RawStoreFlags;
+  readonly flags: RawStoreFlags;
   newLink(consumer: Consumer): Link;
   registerConsumer(link: Link): Link;
   unregisterConsumer(link: Link): void;
@@ -37,6 +37,8 @@ export const updateLinkProducerValue = <T>(link: BaseLink<T>): void => {
   try {
     link.skipMarkDirty = true;
     link.producer.updateValue();
+    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+    // there should be no way to trigger this error.
     /* v8 ignore next 3 */
     if (link.producer.flags & RawStoreFlags.DIRTY) {
       throw new Error('assert failed: store still dirty after updating it');

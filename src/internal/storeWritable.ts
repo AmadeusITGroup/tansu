@@ -28,9 +28,9 @@ export interface ProducerConsumerLink<T> {
 export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>> {
   constructor(public value: T) {}
   flags = RawStoreFlags.NONE;
-  version = 0;
+  private version = 0;
   equalFn = equal<T>;
-  equalCache: Record<number, boolean> | null = null;
+  private equalCache: Record<number, boolean> | null = null;
   consumerLinks: null | ProducerConsumerLink<T>[] = null;
 
   newLink(consumer: Consumer): ProducerConsumerLink<T> {
@@ -51,13 +51,15 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     if (link.version === this.version - 1 || link.version < 0) {
       return false;
     }
-    if (!this.equalCache) {
-      this.equalCache = {};
+    let equalCache = this.equalCache;
+    if (!equalCache) {
+      equalCache = {};
+      this.equalCache = equalCache;
     }
-    let res = this.equalCache[link.version];
+    let res = equalCache[link.version];
     if (res === undefined) {
       res = this.equal(link.value, this.value);
-      this.equalCache[link.version] = res;
+      equalCache[link.version] = res;
     }
     return res;
   }
@@ -83,6 +85,8 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   unregisterConsumer(link: ProducerConsumerLink<T>): void {
     const consumerLinks = this.consumerLinks;
     const index = link.indexInProducer;
+    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+    // there should be no way to trigger this error.
     /* v8 ignore next 3 */
     if (consumerLinks?.[index] !== link) {
       throw new Error('assert failed: invalid indexInProducer');
@@ -137,7 +141,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
         for (let i = 0, l = consumerLinks.length; i < l; i++) {
           const link = consumerLinks[i];
           if (link.skipMarkDirty) continue;
-          link.consumer?.markDirty?.();
+          link.consumer.markDirty();
         }
       }
     } finally {
@@ -147,11 +151,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
 
   get(): T {
     checkNotInNotificationPhase();
-    if (activeConsumer) {
-      return activeConsumer.addProducer(this);
-    } else {
-      return this.readValue();
-    }
+    return activeConsumer ? activeConsumer.addProducer(this) : this.readValue();
   }
 
   readValue(): T {

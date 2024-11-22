@@ -2,11 +2,10 @@ import type { Subscriber, Unsubscriber } from '../types';
 import type { BaseLink, Consumer, RawStore } from './store';
 import { RawStoreFlags } from './store';
 import { checkNotInNotificationPhase } from './storeWritable';
-import { toSubscriberObject } from './subscribeConsumer';
 import { noopUnsubscribe } from './unsubscribe';
 
 export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
-  flags = RawStoreFlags.NONE;
+  readonly flags = RawStoreFlags.NONE;
   constructor(public readonly value: T) {}
 
   newLink(_consumer: Consumer): BaseLink<T> {
@@ -31,7 +30,11 @@ export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
   }
   subscribe(subscriber: Subscriber<T>): Unsubscriber {
     checkNotInNotificationPhase();
-    toSubscriberObject(subscriber).next(this.value);
+    if (typeof subscriber === 'function') {
+      subscriber(this.value);
+    } else {
+      subscriber?.next?.(this.value);
+    }
     return noopUnsubscribe;
   }
 }

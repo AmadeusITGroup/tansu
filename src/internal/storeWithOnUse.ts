@@ -4,7 +4,7 @@ import { RawStoreTrackingUsage } from './storeTrackingUsage';
 import { normalizeUnsubscribe } from './unsubscribe';
 
 export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
-  cleanUpFn: UnsubscribeFunction | null = null;
+  private cleanUpFn: UnsubscribeFunction | null = null;
   override flags = RawStoreFlags.HAS_VISIBLE_ONUSE;
 
   constructor(

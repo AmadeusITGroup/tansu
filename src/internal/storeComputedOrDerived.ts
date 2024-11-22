@@ -36,6 +36,8 @@ export abstract class RawStoreComputedOrDerived<T>
     if (value === COMPUTED_ERRORED) {
       throw this.error;
     }
+    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+    // there should be no way to trigger this error.
     /* v8 ignore next 3 */
     if (value === COMPUTED_UNSET) {
       throw new Error('assert failed: computed value is not set');

@@ -111,7 +111,7 @@ export class RawStoreDerivedStore<T, S extends StoresInput> extends RawStoreDeri
 export class RawStoreSyncDerived<T, S extends StoresInput> extends RawStoreDerived<T, S> {
   constructor(
     stores: S,
-    initialValue: T,
+    _initialValue: T,
     public deriveFn: SyncDeriveFn<T, S>
   ) {
     super(stores, COMPUTED_UNSET);
@@ -130,7 +130,7 @@ export const createOnUseArg = <T>(store: RawStoreWritable<T>): OnUseArgument<T> 
 };
 
 export class RawStoreAsyncDerived<T, S extends StoresInput> extends RawStoreDerived<T, S> {
-  setFn = createOnUseArg(this);
+  private readonly setFn = createOnUseArg(this);
   constructor(
     stores: S,
     initialValue: T,

@@ -15,7 +15,7 @@ const noopSubscriber: SubscriberObject<any> = {
   resume: noop,
 };
 
-export const toSubscriberObject = <T>(subscriber: Subscriber<T>): SubscriberObject<T> => ({
+const toSubscriberObject = <T>(subscriber: Subscriber<T>): SubscriberObject<T> => ({
   next: typeof subscriber === 'function' ? subscriber.bind(null) : bind(subscriber, 'next'),
   pause: bind(subscriber, 'pause'),
   resume: bind(subscriber, 'resume'),

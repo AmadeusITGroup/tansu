@@ -9,11 +9,12 @@ import { RawStoreTrackingUsage } from './storeTrackingUsage';
 import { normalizeUnsubscribe } from './unsubscribe';
 
 export class RawSubscribableWrapper<T> extends RawStoreTrackingUsage<T> {
-  subscriber: Pick<SubscriberObject<T>, 'next'> & SubscriberFunction<T> = this.createSubscriber();
-  unsubscribe: UnsubscribeFunction | null = null;
+  private readonly subscriber: Pick<SubscriberObject<T>, 'next'> & SubscriberFunction<T> =
+    this.createSubscriber();
+  private unsubscribe: UnsubscribeFunction | null = null;
   override flags = RawStoreFlags.HAS_VISIBLE_ONUSE;
 
-  constructor(public subscribable: SubscribableStore<T>) {
+  constructor(public readonly subscribable: SubscribableStore<T>) {
     super(undefined as any);
   }
 

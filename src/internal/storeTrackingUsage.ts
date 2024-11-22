@@ -6,6 +6,8 @@ let flushUnusedQueue: RawStoreTrackingUsage<any>[] | null = null;
 let inFlushUnused = false;
 
 export const flushUnused = (): void => {
+  // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+  // there should be no way to trigger this error.
   /* v8 ignore next 3 */
   if (inFlushUnused) {
     throw new Error('assert failed: recursive flushUnused call');
@@ -33,6 +35,8 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
   override updateValue(): void {
     const flags = this.flags;
     if (!(flags & RawStoreFlags.START_USE_CALLED)) {
+      // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+      // there should be no way to trigger this error.
       /* v8 ignore next 3 */
       if (!(flags & RawStoreFlags.INSIDE_GET) && !this.consumerLinks?.length) {
         throw new Error('assert failed: untracked producer usage');
@@ -44,6 +48,8 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
 
   override checkUnused(): void {
     const flags = this.flags;
+    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+    // there should be no way to trigger this error.
     /* v8 ignore next 3 */
     if (flags & RawStoreFlags.INSIDE_GET) {
       throw new Error('assert failed: INSIDE_GET flag in checkUnused');
@@ -74,6 +80,8 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       this.flags |= RawStoreFlags.INSIDE_GET;
       try {
         this.updateValue();
+        // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+        // there should be no way to trigger this error.
         /* v8 ignore next 3 */
         if (this.flags & RawStoreFlags.DIRTY) {
           throw new Error('assert failed: store still dirty after updating it');
