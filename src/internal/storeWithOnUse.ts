@@ -9,14 +9,13 @@ export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
 
   constructor(
     value: T,
-    public onUseFn: () => Unsubscriber | void
+    public readonly onUseFn: () => Unsubscriber | void
   ) {
     super(value);
   }
 
   override startUse(): void {
-    const onUseFn = this.onUseFn;
-    this.cleanUpFn = normalizeUnsubscribe(onUseFn());
+    this.cleanUpFn = normalizeUnsubscribe(this.onUseFn());
   }
 
   override endUse(): void {
