@@ -957,6 +957,22 @@ describe('stores', () => {
 
       unsubscribe();
     });
+
+    it('should have no scope in the readable onUse and update functions', () => {
+      const scopes: any[] = [];
+      const a = readable(0, function (this: any, set) {
+        scopes.push(this);
+        set.update(function (this: any, v) {
+          scopes.push(this);
+          return v + 1;
+        });
+        return function (this: any) {
+          scopes.push(this);
+        };
+      });
+      expect(a()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
+    });
   });
 
   describe('writable', () => {
@@ -1198,6 +1214,22 @@ describe('stores', () => {
       expect((readonlyStore as any).set).toBeUndefined();
       expect((readonlyStore as any).update).toBeUndefined();
       expect(readonlyStore[Symbol.observable || '@@observable']()).toBe(readonlyStore);
+    });
+
+    it('should have no scope in the writable onUse and update functions', () => {
+      const scopes: any[] = [];
+      const a = writable(0, function (this: any, set) {
+        scopes.push(this);
+        set.update(function (this: any, v) {
+          scopes.push(this);
+          return v + 1;
+        });
+        return function (this: any) {
+          scopes.push(this);
+        };
+      });
+      expect(a()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
     });
   });
 
@@ -2266,6 +2298,42 @@ describe('stores', () => {
       aOwn.set(undefined);
       expect(a).toEqual([1, 2, 1, 5, 6]);
       unsubscribe();
+    });
+
+    it('should have no scope in the sync derived function', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = derived(
+        a,
+        function (this: any, a) {
+          scopes.push(this);
+          return a + 1;
+        },
+        0
+      );
+      expect(b()).toBe(1);
+      expect(scopes).toEqual([undefined]);
+    });
+
+    it('should have no scope in the async derived functions', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = derived(
+        a,
+        function (this: any, a, set) {
+          scopes.push(this);
+          set.update(function (this: any, v) {
+            scopes.push(this);
+            return v + a + 1;
+          });
+          return function (this: any) {
+            scopes.push(this);
+          };
+        },
+        0
+      );
+      expect(b()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
     });
   });
 
