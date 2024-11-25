@@ -97,14 +97,9 @@ export class RawStoreDerivedStore<T, S extends StoresInput> extends RawStoreDeri
   constructor(
     stores: S,
     initialValue: T,
-    public deriveFn: (values: StoresInputValues<S>) => void
+    public derive: (values: StoresInputValues<S>) => void
   ) {
     super(stores, initialValue);
-  }
-
-  protected override derive(values: StoresInputValues<S>): void {
-    const deriveFn = this.deriveFn;
-    return deriveFn(values);
   }
 }
 
