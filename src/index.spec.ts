@@ -5,6 +5,7 @@ import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
+  OnUseArgument,
   Readable,
   ReadableSignal,
   StoreInput,
@@ -973,6 +974,23 @@ describe('stores', () => {
       expect(a()).toBe(1);
       expect(scopes).toEqual([undefined, undefined, undefined]);
     });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      let set: OnUseArgument<number>;
+      const a = readable(0, {
+        onUse(s) {
+          set = s;
+        },
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      expect(a()).toBe(0);
+      set!(1);
+      expect(scopes).toEqual([undefined]);
+    });
   });
 
   describe('writable', () => {
@@ -1230,6 +1248,18 @@ describe('stores', () => {
       });
       expect(a()).toBe(1);
       expect(scopes).toEqual([undefined, undefined, undefined]);
+    });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      const a = writable(0, {
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      a.set(1);
+      expect(scopes).toEqual([undefined]);
     });
   });
 
@@ -3408,6 +3438,21 @@ describe('stores', () => {
       c();
       expect(calls).toBe(1);
       expect(scope).toBe(undefined);
+    });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = computed(() => a() + 1, {
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      expect(b()).toBe(1);
+      a.set(1);
+      expect(b()).toBe(2);
+      expect(scopes).toEqual([undefined]);
     });
 
     it('should correctly register and clean-up consumers (several clean-up)', async () => {
