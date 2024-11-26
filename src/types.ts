@@ -91,6 +91,9 @@ export interface InteropObservable<T> {
  */
 export type StoreInput<T> = SubscribableStore<T> | InteropObservable<T>;
 
+/**
+ * Represents a store that can return its value with a get method.
+ */
 export interface SignalStore<T> {
   /**
    * Returns the value of the store.
