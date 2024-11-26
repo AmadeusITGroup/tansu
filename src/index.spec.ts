@@ -3098,6 +3098,29 @@ describe('stores', () => {
       expect(cHasListeners).toBe(false);
     });
 
+    it('should not re-subscribe to stores that should no longer be used', () => {
+      const events: string[] = [];
+      const a = writable(true);
+      const b = writable(0, () => {
+        events.push('b used');
+        return () => {
+          events.push('b unused');
+        };
+      });
+      const c = writable(1, () => {
+        events.push('c used');
+        return () => {
+          events.push('c unused');
+        };
+      });
+      const d = computed(() => (a() ? b() : c()));
+      expect(d()).toBe(0);
+      events.push('changing a');
+      a.set(false);
+      expect(d()).toBe(1);
+      expect(events).toEqual(['b used', 'b unused', 'changing a', 'c used', 'c unused']);
+    });
+
     it('should not recompute if an untracked store changed', () => {
       const a = writable(1);
       const b = writable(2);
