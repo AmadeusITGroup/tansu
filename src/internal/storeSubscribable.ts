@@ -14,7 +14,7 @@ export class RawSubscribableWrapper<T> extends RawStoreTrackingUsage<T> {
   private unsubscribe: UnsubscribeFunction | null = null;
   override flags = RawStoreFlags.HAS_VISIBLE_ONUSE;
 
-  constructor(public readonly subscribable: SubscribableStore<T>) {
+  constructor(private readonly subscribable: SubscribableStore<T>) {
     super(undefined as any);
   }
 

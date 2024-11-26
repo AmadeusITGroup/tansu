@@ -23,10 +23,10 @@ abstract class RawStoreDerived<T, S extends StoresInput>
   extends RawStoreComputedOrDerived<T>
   implements Consumer
 {
-  arrayMode: boolean;
-  producers: RawStore<any>[];
-  producerLinks: BaseLink<any>[] | null = null;
-  cleanUpFn: UnsubscribeFunction | null = null;
+  private readonly arrayMode: boolean;
+  private readonly producers: RawStore<any>[];
+  private producerLinks: BaseLink<any>[] | null = null;
+  private cleanUpFn: UnsubscribeFunction | null = null;
   override flags = RawStoreFlags.HAS_VISIBLE_ONUSE | RawStoreFlags.DIRTY;
 
   constructor(producers: S, initialValue: T) {
@@ -97,7 +97,7 @@ export class RawStoreDerivedStore<T, S extends StoresInput> extends RawStoreDeri
   constructor(
     stores: S,
     initialValue: T,
-    public derive: (values: StoresInputValues<S>) => void
+    protected readonly derive: (values: StoresInputValues<S>) => void
   ) {
     super(stores, initialValue);
   }
@@ -107,7 +107,7 @@ export class RawStoreSyncDerived<T, S extends StoresInput> extends RawStoreDeriv
   constructor(
     stores: S,
     _initialValue: T,
-    public deriveFn: SyncDeriveFn<T, S>
+    private readonly deriveFn: SyncDeriveFn<T, S>
   ) {
     super(stores, COMPUTED_UNSET);
   }
@@ -129,7 +129,7 @@ export class RawStoreAsyncDerived<T, S extends StoresInput> extends RawStoreDeri
   constructor(
     stores: S,
     initialValue: T,
-    public deriveFn: AsyncDeriveFn<T, S>
+    private readonly deriveFn: AsyncDeriveFn<T, S>
   ) {
     super(stores, initialValue);
   }

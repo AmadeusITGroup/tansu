@@ -12,11 +12,11 @@ export class RawStoreComputed<T>
   extends RawStoreComputedOrDerived<T>
   implements Consumer, ActiveConsumer
 {
-  producerIndex = 0;
-  producerLinks: BaseLink<any>[] | null = null;
-  epoch = -1;
+  private producerIndex = 0;
+  private producerLinks: BaseLink<any>[] | null = null;
+  private epoch = -1;
 
-  constructor(public computeFn: () => T) {
+  constructor(private readonly computeFn: () => T) {
     super(COMPUTED_UNSET);
   }
 

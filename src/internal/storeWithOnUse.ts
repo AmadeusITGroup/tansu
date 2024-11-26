@@ -9,7 +9,7 @@ export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
 
   constructor(
     value: T,
-    public readonly onUseFn: () => Unsubscriber | void
+    private readonly onUseFn: () => Unsubscriber | void
   ) {
     super(value);
   }

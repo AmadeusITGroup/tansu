@@ -6,7 +6,7 @@ import { noopUnsubscribe } from './unsubscribe';
 
 export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
   readonly flags = RawStoreFlags.NONE;
-  constructor(public readonly value: T) {}
+  constructor(private readonly value: T) {}
 
   newLink(_consumer: Consumer): BaseLink<T> {
     return {

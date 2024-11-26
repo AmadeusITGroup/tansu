@@ -22,8 +22,8 @@ const toSubscriberObject = <T>(subscriber: Subscriber<T>): SubscriberObject<T> =
 });
 
 export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer {
-  link: Link;
-  subscriber: SubscriberObject<T>;
+  private readonly link: Link;
+  private subscriber: SubscriberObject<T>;
   dirtyCount = 1;
   constructor(producer: RawStore<T, Link>, subscriber: Subscriber<T>) {
     this.subscriber = toSubscriberObject(subscriber);

@@ -26,7 +26,7 @@ export interface ProducerConsumerLink<T> {
 }
 
 export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>> {
-  constructor(public value: T) {}
+  constructor(protected value: T) {}
   flags = RawStoreFlags.NONE;
   private version = 0;
   equalFn = equal<T>;
@@ -102,10 +102,10 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     }
   }
 
-  checkUnused(): void {}
+  protected checkUnused(): void {}
   updateValue(): void {}
 
-  equal(a: T, b: T): boolean {
+  protected equal(a: T, b: T): boolean {
     const equalFn = this.equalFn;
     return equalFn(a, b);
   }
@@ -132,7 +132,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     this.set(updater(this.value));
   }
 
-  markConsumersDirty(): void {
+  protected markConsumersDirty(): void {
     const prevNotificationPhase = notificationPhase;
     notificationPhase = true;
     try {
