@@ -13,7 +13,7 @@ export class RawStoreComputed<T>
   implements Consumer, ActiveConsumer
 {
   private producerIndex = 0;
-  private producerLinks: BaseLink<any>[] | null = null;
+  private producerLinks: BaseLink<any>[] = [];
   private epoch = -1;
 
   constructor(private readonly computeFn: () => T) {
@@ -47,11 +47,7 @@ export class RawStoreComputed<T>
   }
 
   addProducer<U, L extends BaseLink<U>>(producer: RawStore<U, L>): U {
-    let producerLinks = this.producerLinks;
-    if (!producerLinks) {
-      producerLinks = [];
-      this.producerLinks = producerLinks;
-    }
+    const producerLinks = this.producerLinks;
     const producerIndex = this.producerIndex;
     let link = producerLinks[producerIndex] as L | undefined;
     if (link?.producer !== producer) {
@@ -71,38 +67,33 @@ export class RawStoreComputed<T>
 
   override startUse(): void {
     const producerLinks = this.producerLinks;
-    if (producerLinks) {
-      for (let i = 0, l = producerLinks.length; i < l; i++) {
-        const link = producerLinks[i];
-        link.producer.registerConsumer(link);
-      }
+    for (let i = 0, l = producerLinks.length; i < l; i++) {
+      const link = producerLinks[i];
+      link.producer.registerConsumer(link);
     }
     this.flags |= RawStoreFlags.DIRTY;
   }
 
   override endUse(): void {
     const producerLinks = this.producerLinks;
-    if (producerLinks) {
-      for (let i = 0, l = producerLinks.length; i < l; i++) {
-        const link = producerLinks[i];
-        link.producer.unregisterConsumer(link);
-      }
+    for (let i = 0, l = producerLinks.length; i < l; i++) {
+      const link = producerLinks[i];
+      link.producer.unregisterConsumer(link);
     }
   }
 
   override areProducersUpToDate(): boolean {
-    const producerLinks = this.producerLinks;
-    if (producerLinks) {
-      for (let i = 0, l = producerLinks.length; i < l; i++) {
-        const link = producerLinks[i];
-        const producer = link.producer;
-        updateLinkProducerValue(link);
-        if (!producer.isLinkUpToDate(link)) {
-          return false;
-        }
-      }
-    } else if (this.value === COMPUTED_UNSET) {
+    if (this.value === COMPUTED_UNSET) {
       return false;
+    }
+    const producerLinks = this.producerLinks;
+    for (let i = 0, l = producerLinks.length; i < l; i++) {
+      const link = producerLinks[i];
+      const producer = link.producer;
+      updateLinkProducerValue(link);
+      if (!producer.isLinkUpToDate(link)) {
+        return false;
+      }
     }
     return true;
   }
@@ -125,7 +116,7 @@ export class RawStoreComputed<T>
     // Remove unused producers:
     const producerLinks = this.producerLinks;
     const producerIndex = this.producerIndex;
-    if (producerLinks && producerIndex < producerLinks.length) {
+    if (producerIndex < producerLinks.length) {
       for (let i = 0, l = producerLinks.length - producerIndex; i < l; i++) {
         const link = producerLinks.pop()!;
         link.producer.unregisterConsumer(link);
