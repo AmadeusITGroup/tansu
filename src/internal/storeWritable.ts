@@ -31,7 +31,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   private version = 0;
   equalFn = equal<T>;
   private equalCache: Record<number, boolean> | null = null;
-  consumerLinks: null | ProducerConsumerLink<T>[] = null;
+  consumerLinks: ProducerConsumerLink<T>[] = [];
 
   newLink(consumer: Consumer): ProducerConsumerLink<T> {
     return {
@@ -71,11 +71,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   }
 
   registerConsumer(link: ProducerConsumerLink<T>): ProducerConsumerLink<T> {
-    let consumerLinks = this.consumerLinks;
-    if (!consumerLinks) {
-      consumerLinks = [];
-      this.consumerLinks = consumerLinks;
-    }
+    const consumerLinks = this.consumerLinks;
     const indexInProducer = consumerLinks.length;
     link.indexInProducer = indexInProducer;
     consumerLinks[indexInProducer] = link;
@@ -88,7 +84,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
     // there should be no way to trigger this error.
     /* v8 ignore next 3 */
-    if (consumerLinks?.[index] !== link) {
+    if (consumerLinks[index] !== link) {
       throw new Error('assert failed: invalid indexInProducer');
     }
     // swap with the last item to avoid shifting the array
@@ -137,12 +133,10 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     notificationPhase = true;
     try {
       const consumerLinks = this.consumerLinks;
-      if (consumerLinks) {
-        for (let i = 0, l = consumerLinks.length; i < l; i++) {
-          const link = consumerLinks[i];
-          if (link.skipMarkDirty) continue;
-          link.consumer.markDirty();
-        }
+      for (let i = 0, l = consumerLinks.length; i < l; i++) {
+        const link = consumerLinks[i];
+        if (link.skipMarkDirty) continue;
+        link.consumer.markDirty();
       }
     } finally {
       notificationPhase = prevNotificationPhase;

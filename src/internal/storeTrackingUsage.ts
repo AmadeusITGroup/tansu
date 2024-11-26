@@ -38,7 +38,7 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
       // there should be no way to trigger this error.
       /* v8 ignore next 3 */
-      if (!(flags & RawStoreFlags.INSIDE_GET) && !this.consumerLinks?.length) {
+      if (!(flags & RawStoreFlags.INSIDE_GET) && !this.consumerLinks.length) {
         throw new Error('assert failed: untracked producer usage');
       }
       this.flags |= RawStoreFlags.START_USE_CALLED;
@@ -54,7 +54,7 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
     if (flags & RawStoreFlags.INSIDE_GET) {
       throw new Error('assert failed: INSIDE_GET flag in checkUnused');
     }
-    if (flags & RawStoreFlags.START_USE_CALLED && !this.consumerLinks?.length) {
+    if (flags & RawStoreFlags.START_USE_CALLED && !this.consumerLinks.length) {
       if (inFlushUnused || flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
         this.flags &= ~RawStoreFlags.START_USE_CALLED;
         untrack(() => this.endUse());
