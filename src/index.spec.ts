@@ -784,6 +784,24 @@ describe('stores', () => {
       unsubscribe();
     });
 
+    it('should work to call the subscribe method of a constant store with a function', () => {
+      const one = readable(1);
+      const values: number[] = [];
+      one.subscribe((value) => values.push(value));
+      expect(values).toEqual([1]);
+    });
+
+    it('should work to call the subscribe method of a constant store with an object with a next method', () => {
+      const one = readable(1);
+      const values: number[] = [];
+      one.subscribe({
+        next(value) {
+          values.push(value);
+        },
+      });
+      expect(values).toEqual([1]);
+    });
+
     it('should work to subscribe without a listener', () => {
       let used = 0;
       const a = readable(0, () => {
