@@ -9,11 +9,10 @@ export const enum RawStoreFlags {
   // the following flags are used in RawStoreTrackingUsage and derived classes
   HAS_VISIBLE_ONUSE = 1,
   START_USE_CALLED = 1 << 1,
-  INSIDE_GET = 1 << 2,
-  FLUSH_PLANNED = 1 << 3,
+  FLUSH_PLANNED = 1 << 2,
   // the following flags are used in RawStoreComputedOrDerived and derived classes
-  COMPUTING = 1 << 4,
-  DIRTY = 1 << 5,
+  COMPUTING = 1 << 3,
+  DIRTY = 1 << 4,
 }
 
 export interface BaseLink<T> {

@@ -1279,6 +1279,15 @@ describe('stores', () => {
       a.set(1);
       expect(scopes).toEqual([undefined]);
     });
+
+    it('should allow reading the store in onUse', () => {
+      const onUseValues: number[] = [];
+      const store = writable(0, () => {
+        onUseValues.push(store());
+      });
+      expect(store()).toBe(0);
+      expect(onUseValues).toEqual([0]);
+    });
   });
 
   describe('asWritable', () => {
