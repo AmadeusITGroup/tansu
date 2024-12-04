@@ -307,11 +307,12 @@ const perfTests = [
 ];
 
 for (const config of perfTests) {
-  const { graph, counter } = makeGraph(config);
+  let graphAndCounter: GraphAndCounter;
 
   bench(
     `dynamic ${config.name}`,
     () => {
+      const { graph, counter } = graphAndCounter;
       counter.count = 0;
       const sum = runGraph(graph, config.iterations, config.readFraction);
 
@@ -322,6 +323,13 @@ for (const config of perfTests) {
         expect(counter.count).toBe(config.expected.count);
       }
     },
-    { throws: true, setup }
+    {
+      throws: true,
+      time: 5000,
+      setup() {
+        graphAndCounter = makeGraph(config);
+        setup();
+      },
+    }
   );
 }
