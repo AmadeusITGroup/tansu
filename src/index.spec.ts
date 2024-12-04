@@ -3,30 +3,45 @@ import { Component, Injectable, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
-import { describe, expect, it, vi } from 'vitest';
-import {
-  DerivedStore,
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type {
+  OnUseArgument,
   Readable,
   ReadableSignal,
-  Store,
   StoreInput,
   StoreOptions,
   StoresInput,
   StoresInputValues,
   SubscribableStore,
   SubscriberObject,
-  asWritable,
+} from './index';
+import {
+  DerivedStore,
+  Store,
   asReadable,
-  equal,
+  asWritable,
   batch,
   computed,
   derived,
+  equal,
   get,
   readable,
   symbolObservable,
   untrack,
   writable,
 } from './index';
+import { rawStoreSymbol } from './internal/exposeRawStores';
+import { RawStoreFlags } from './internal/store';
+import { flushUnused } from './internal/storeTrackingUsage';
+import type { RawStoreWritable } from './internal/storeWritable';
+
+const expectCorrectlyCleanedUp = <T>(store: StoreInput<T>) => {
+  const rawStore = (store as any)[rawStoreSymbol] as RawStoreWritable<T>;
+  expect(rawStore.consumerLinks.length).toBe(0);
+  expect(rawStore.flags & RawStoreFlags.START_USE_CALLED).toBeFalsy();
+};
+
+afterEach(flushUnused);
 
 const customSimpleWritable = <T>(
   value: T
@@ -150,6 +165,93 @@ describe('stores', () => {
       expect(store2()).toBe(0);
       store1.set(1);
       expect(store2()).toBe(1);
+    });
+
+    it('should throw when trying to read a signal during the notification phase', () => {
+      const store = writable(0);
+      let success = 0;
+      const errors: any[] = [];
+      const unsubscribe = store.subscribe({
+        pause() {
+          try {
+            store.get();
+            success++;
+          } catch (error) {
+            errors.push(error);
+          }
+        },
+      });
+      store.set(1);
+      expect(success).toBe(0);
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toContain('during the notification phase');
+      unsubscribe();
+    });
+
+    it('should throw when trying to read an up-to-date computed signal during the notification phase', () => {
+      const w1 = writable(0);
+      const s1 = computed(() => w1());
+      s1();
+      const store = writable(0);
+      let success = 0;
+      const errors: any[] = [];
+      const unsubscribe = store.subscribe({
+        pause() {
+          try {
+            s1.get();
+            success++;
+          } catch (error) {
+            errors.push(error);
+          }
+        },
+      });
+      store.set(1);
+      expect(success).toBe(0);
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toContain('during the notification phase');
+      unsubscribe();
+    });
+
+    it('should throw when trying to subscribe to a signal during the notification phase', () => {
+      const store = writable(0);
+      let success = 0;
+      const errors: any[] = [];
+      const unsubscribe = store.subscribe({
+        pause() {
+          try {
+            store.subscribe(() => {});
+            success++;
+          } catch (error) {
+            errors.push(error);
+          }
+        },
+      });
+      store.set(1);
+      expect(success).toBe(0);
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toContain('during the notification phase');
+      unsubscribe();
+    });
+
+    it('should throw when trying to write a signal during notification phase', () => {
+      const store = writable(0);
+      let success = 0;
+      const errors: any[] = [];
+      const unsubscribe = store.subscribe({
+        pause() {
+          try {
+            store.set(2);
+            success++;
+          } catch (error) {
+            errors.push(error);
+          }
+        },
+      });
+      store.set(1);
+      expect(success).toBe(0);
+      expect(errors.length).toBe(1);
+      expect(errors[0].message).toContain('during the notification phase');
+      unsubscribe();
     });
 
     it('should work to use subscribe only and use it in a computed', () => {
@@ -444,34 +546,6 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should not call again listeners when only resuming subscribers', () => {
-      class BasicStore extends Store<object> {
-        public override pauseSubscribers(): void {
-          super.pauseSubscribers();
-        }
-        public override resumeSubscribers(): void {
-          super.resumeSubscribers();
-        }
-        public override set(value: object): void {
-          super.set(value);
-        }
-      }
-      const initialValue = {};
-      const newValue = {};
-      const store = new BasicStore(initialValue);
-      const calls: object[] = [];
-      const unsubscribe = store.subscribe((v) => calls.push(v));
-      expect(calls.length).toBe(1);
-      expect(calls[0]).toBe(initialValue);
-      store.pauseSubscribers();
-      store.resumeSubscribers();
-      expect(calls.length).toBe(1);
-      store.set(newValue);
-      expect(calls.length).toBe(2);
-      expect(calls[1]).toBe(newValue);
-      unsubscribe();
-    });
-
     it('asReadable should be compatible with rxjs (BehaviorSubject)', () => {
       const behaviorSubject = new BehaviorSubject(0);
       const store = asReadable(behaviorSubject);
@@ -510,39 +584,6 @@ describe('stores', () => {
       unsubscribe();
       behaviorSubject.next(2);
       expect(values).toEqual([0, 1]);
-    });
-
-    it('asReadable should not wrap its output subscribe function into a new wrapper when called again (BehaviorSubject)', () => {
-      const input = new BehaviorSubject(0);
-      const readable1 = asReadable(input);
-      const readable2 = asReadable(readable1);
-      expect(readable1.subscribe).toBe(readable2.subscribe);
-    });
-
-    it('asReadable should not wrap its output subscribe function into a new wrapper when called again (InteropObservable)', () => {
-      const b = new BehaviorSubject(1);
-      const input = { [symbolObservable]: () => b };
-      const readable1 = asReadable(input);
-      const readable2 = asReadable(readable1);
-      expect(readable1.subscribe).toBe(readable2.subscribe);
-    });
-
-    it('asReadable should not wrap the readable (const store) subscribe function into a new wrapper', () => {
-      const readable1 = readable(5);
-      const readable2 = asReadable(readable1);
-      expect(readable1.subscribe).toBe(readable2.subscribe);
-    });
-
-    it('asReadable should not wrap the readable (with onUse) subscribe function into a new wrapper', () => {
-      const readable1 = readable(5, { onUse() {} });
-      const readable2 = asReadable(readable1);
-      expect(readable1.subscribe).toBe(readable2.subscribe);
-    });
-
-    it('asReadable should not wrap the writable subscribe function into a new wrapper', () => {
-      const readable1 = writable(5);
-      const readable2 = asReadable(readable1);
-      expect(readable1.subscribe).toBe(readable2.subscribe);
     });
 
     it('asReadable should work nicely as a return value of a function whose type is explicitly defined', () => {
@@ -723,6 +764,44 @@ describe('stores', () => {
       expect(one()).toBe(1);
     });
 
+    it('should work to call a constant store in a derived', () => {
+      const a = readable(0);
+      const b = derived(a, (a) => a + 1);
+      expect(b()).toEqual(1);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((v) => values.push(v));
+      expect(values).toEqual([1]);
+      unsubscribe();
+    });
+
+    it('should work to call a constant store in a computed', () => {
+      const a = readable(0);
+      const b = computed(() => a() + 1);
+      expect(b()).toEqual(1);
+      const values: number[] = [];
+      const unsubscribe = b.subscribe((v) => values.push(v));
+      expect(values).toEqual([1]);
+      unsubscribe();
+    });
+
+    it('should work to call the subscribe method of a constant store with a function', () => {
+      const one = readable(1);
+      const values: number[] = [];
+      one.subscribe((value) => values.push(value));
+      expect(values).toEqual([1]);
+    });
+
+    it('should work to call the subscribe method of a constant store with an object with a next method', () => {
+      const one = readable(1);
+      const values: number[] = [];
+      one.subscribe({
+        next(value) {
+          values.push(value);
+        },
+      });
+      expect(values).toEqual([1]);
+    });
+
     it('should work to subscribe without a listener', () => {
       let used = 0;
       const a = readable(0, () => {
@@ -874,7 +953,7 @@ describe('stores', () => {
       ]);
     });
 
-    it('should be able to use destructuring', () => {
+    it('should be able to use destructuring (constant store)', () => {
       const store = readable(0);
       const { subscribe } = store;
 
@@ -883,6 +962,52 @@ describe('stores', () => {
       expect(values).toEqual([0]);
 
       unsubscribe();
+    });
+
+    it('should be able to use destructuring (non-constant store)', () => {
+      const store = readable(0, (set) => {
+        set(1);
+      });
+      const { subscribe } = store;
+
+      const values: Array<number> = [];
+      const unsubscribe = subscribe((v) => values.push(v));
+      expect(values).toEqual([1]);
+
+      unsubscribe();
+    });
+
+    it('should have no scope in the readable onUse and update functions', () => {
+      const scopes: any[] = [];
+      const a = readable(0, function (this: any, set) {
+        scopes.push(this);
+        set.update(function (this: any, v) {
+          scopes.push(this);
+          return v + 1;
+        });
+        return function (this: any) {
+          scopes.push(this);
+        };
+      });
+      expect(a()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
+    });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      let set: OnUseArgument<number>;
+      const a = readable(0, {
+        onUse(s) {
+          set = s;
+        },
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      expect(a()).toBe(0);
+      set!(1);
+      expect(scopes).toEqual([undefined]);
     });
   });
 
@@ -1125,6 +1250,43 @@ describe('stores', () => {
       expect((readonlyStore as any).set).toBeUndefined();
       expect((readonlyStore as any).update).toBeUndefined();
       expect(readonlyStore[Symbol.observable || '@@observable']()).toBe(readonlyStore);
+    });
+
+    it('should have no scope in the writable onUse and update functions', () => {
+      const scopes: any[] = [];
+      const a = writable(0, function (this: any, set) {
+        scopes.push(this);
+        set.update(function (this: any, v) {
+          scopes.push(this);
+          return v + 1;
+        });
+        return function (this: any) {
+          scopes.push(this);
+        };
+      });
+      expect(a()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
+    });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      const a = writable(0, {
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      a.set(1);
+      expect(scopes).toEqual([undefined]);
+    });
+
+    it('should allow reading the store in onUse', () => {
+      const onUseValues: number[] = [];
+      const store = writable(0, () => {
+        onUseValues.push(store());
+      });
+      expect(store()).toBe(0);
+      expect(onUseValues).toEqual([0]);
     });
   });
 
@@ -2089,26 +2251,22 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with a derived function that subscribes to itself', () => {
+    it('should throw if a derived function subscribes to itself', () => {
       const store = writable(0);
-      let derivedCalls = 0;
-      let innerUnsubscribe: undefined | (() => void);
-      const innerSubscriptionCalls: any[] = [];
       const derivedStore = derived(store, (value) => {
-        derivedCalls++;
-        if (!innerUnsubscribe) {
-          // the first call of the listener should contain undefined as the value is not yet computed
-          innerUnsubscribe = derivedStore.subscribe((value) => innerSubscriptionCalls.push(value));
-        }
+        // calling subscribe here should throw a "recursive computed" error
+        derivedStore.subscribe(() => {});
         return value;
       });
-      const calls: number[] = [];
-      const unsubscribe = derivedStore.subscribe((n: number) => calls.push(n));
-      expect(derivedCalls).toBe(1);
-      expect(innerSubscriptionCalls).toEqual([undefined, 0]);
-      expect(calls).toEqual([0]);
-      unsubscribe();
-      innerUnsubscribe!();
+      expect(() => {
+        derivedStore.subscribe(() => {});
+      }).toThrow('recursive computed');
+    });
+
+    it('should throw when reading a derived that calls itself', () => {
+      const store = writable(0);
+      const c = derived(store, (): number => c());
+      expect(c).toThrowError('recursive computed');
     });
 
     it('should work with a basic switchMap', () => {
@@ -2137,7 +2295,8 @@ describe('stores', () => {
       const b = writable(2);
       const c = writable(0);
       const spy = vi.spyOn(a, 'subscribe');
-      const d = switchMap(c, (c) => (c % 2 === 0 ? a : b));
+      const aWithSpy = { subscribe: a.subscribe };
+      const d = switchMap(c, (c) => (c % 2 === 0 ? aWithSpy : b));
       const values: number[] = [];
       const unsubscribe = d.subscribe((value) => values.push(value));
       expect(spy).toHaveBeenCalledTimes(1);
@@ -2196,6 +2355,42 @@ describe('stores', () => {
       aOwn.set(undefined);
       expect(a).toEqual([1, 2, 1, 5, 6]);
       unsubscribe();
+    });
+
+    it('should have no scope in the sync derived function', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = derived(
+        a,
+        function (this: any, a) {
+          scopes.push(this);
+          return a + 1;
+        },
+        0
+      );
+      expect(b()).toBe(1);
+      expect(scopes).toEqual([undefined]);
+    });
+
+    it('should have no scope in the async derived functions', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = derived(
+        a,
+        function (this: any, a, set) {
+          scopes.push(this);
+          set.update(function (this: any, v) {
+            scopes.push(this);
+            return v + a + 1;
+          });
+          return function (this: any) {
+            scopes.push(this);
+          };
+        },
+        0
+      );
+      expect(b()).toBe(1);
+      expect(scopes).toEqual([undefined, undefined, undefined]);
     });
   });
 
@@ -2829,6 +3024,19 @@ describe('stores', () => {
   });
 
   describe('computed', () => {
+    it('should work with a basic store class', () => {
+      class CounterStore extends Store<number> {
+        increase() {
+          this.update((value) => value + 1);
+        }
+      }
+      const store = new CounterStore(0);
+      const doubleStore = computed(() => store.get() * 2);
+      expect(doubleStore()).toBe(0);
+      store.increase();
+      expect(doubleStore()).toBe(2);
+    });
+
     it('should not call equal with undefined during the first computation', () => {
       const a = writable(1);
       const equal = vi.fn(Object.is);
@@ -2897,6 +3105,29 @@ describe('stores', () => {
       unsubscribe();
       expect(bHasListeners).toBe(false);
       expect(cHasListeners).toBe(false);
+    });
+
+    it('should not re-subscribe to stores that should no longer be used', () => {
+      const events: string[] = [];
+      const a = writable(true);
+      const b = writable(0, () => {
+        events.push('b used');
+        return () => {
+          events.push('b unused');
+        };
+      });
+      const c = writable(1, () => {
+        events.push('c used');
+        return () => {
+          events.push('c unused');
+        };
+      });
+      const d = computed(() => (a() ? b() : c()));
+      expect(d()).toBe(0);
+      events.push('changing a');
+      a.set(false);
+      expect(d()).toBe(1);
+      expect(events).toEqual(['b used', 'b unused', 'changing a', 'c used', 'c unused']);
     });
 
     it('should not recompute if an untracked store changed', () => {
@@ -2988,6 +3219,11 @@ describe('stores', () => {
         myValue.subscribe((value) => values.push(value));
       }).toThrowError('recursive computed');
       expect(values).toEqual([]);
+    });
+
+    it('should throw when reading a computed that calls itself in untracked', () => {
+      const c = computed((): number => untrack(c));
+      expect(c).toThrowError('recursive computed');
     });
 
     it('should throw when setting a value that triggers a recursive computed', () => {
@@ -3200,6 +3436,126 @@ describe('stores', () => {
       expect(cValues).toEqual([2, 4]);
       bUnsubscribe();
       cUnsubscribe();
+    });
+
+    it('should prevent the diamond dependency problem', () => {
+      const a = writable(0);
+      const b = computed(() => `b${a()}`);
+      const c = computed(() => `c${a()}`);
+      const dFn = vi.fn(() => `${b()}${c()}`);
+      const d = computed(dFn);
+
+      const values: string[] = [];
+
+      const unsubscribe = d.subscribe((value) => {
+        values.push(value);
+      });
+      expect(dFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['b0c0']);
+      a.set(1);
+      expect(dFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['b0c0', 'b1c1']);
+      unsubscribe();
+    });
+
+    it('should prevent the asymmetric diamond dependency problem', () => {
+      const a = writable(0);
+      const b = computed(() => `b${a()}`);
+      const cFn = vi.fn(() => `${a()}${b()}`);
+      const c = computed(cFn);
+
+      const values: string[] = [];
+
+      const unsubscribe = c.subscribe((value) => {
+        values.push(value);
+      });
+      expect(cFn).toHaveBeenCalledTimes(1);
+      expect(values).toEqual(['0b0']);
+      a.set(1);
+      expect(cFn).toHaveBeenCalledTimes(2);
+      expect(values).toEqual(['0b0', '1b1']);
+      unsubscribe();
+    });
+
+    it('should call the function with no scope', () => {
+      let calls = 0;
+      let scope: any;
+      const c = computed(function (this: any) {
+        calls++;
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        scope = this;
+      });
+      c();
+      expect(calls).toBe(1);
+      expect(scope).toBe(undefined);
+    });
+
+    it('should have no scope in the equal function', () => {
+      const scopes: any[] = [];
+      const a = writable(0);
+      const b = computed(() => a() + 1, {
+        equal(a, b) {
+          scopes.push(this);
+          return Object.is(a, b);
+        },
+      });
+      expect(b()).toBe(1);
+      a.set(1);
+      expect(b()).toBe(2);
+      expect(scopes).toEqual([undefined]);
+    });
+
+    it('should correctly register and clean-up consumers (several clean-up)', async () => {
+      const store = writable(0);
+      const doubleStore = computed(() => store() * 2);
+      expect(doubleStore()).toEqual(0);
+      await Promise.resolve(0);
+      expectCorrectlyCleanedUp(store);
+      expectCorrectlyCleanedUp(doubleStore);
+      const values: number[] = [];
+      const unsubscribe = doubleStore.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      await Promise.resolve(0);
+      store.set(1);
+      expect(values).toEqual([0, 2]);
+      unsubscribe();
+      await Promise.resolve(0);
+      expectCorrectlyCleanedUp(store);
+      expectCorrectlyCleanedUp(doubleStore);
+      expect(doubleStore()).toEqual(2);
+      await Promise.resolve(0);
+      expectCorrectlyCleanedUp(store);
+      expectCorrectlyCleanedUp(doubleStore);
+    });
+
+    it('should correctly register and clean-up consumers (one clean-up at the end)', async () => {
+      const store = writable(0);
+      const doubleStore = computed(() => store() * 2);
+      expect(doubleStore()).toEqual(0);
+      const values: number[] = [];
+      const unsubscribe = doubleStore.subscribe((value) => values.push(value));
+      expect(values).toEqual([0]);
+      await Promise.resolve(0);
+      store.set(1);
+      expect(values).toEqual([0, 2]);
+      unsubscribe();
+      expect(doubleStore()).toEqual(2);
+      await Promise.resolve(0);
+      expectCorrectlyCleanedUp(store);
+      expectCorrectlyCleanedUp(doubleStore);
+    });
+
+    it('should correctly register and clean-up multiple levels of consumers', async () => {
+      const store = writable(0);
+      const doubleStore = computed(() => store() * 2);
+      const doubleDoubleStore = computed(() => doubleStore() * 2);
+      const doubleDoubleDoubleStore = computed(() => doubleDoubleStore() * 2);
+      expect(doubleDoubleDoubleStore()).toEqual(0);
+      await Promise.resolve(0);
+      expectCorrectlyCleanedUp(store);
+      expectCorrectlyCleanedUp(doubleStore);
+      expectCorrectlyCleanedUp(doubleDoubleStore);
+      expectCorrectlyCleanedUp(doubleDoubleDoubleStore);
     });
   });
 });
