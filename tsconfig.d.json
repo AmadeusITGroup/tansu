@@ -5,5 +5,5 @@
     "declaration": true,
     "emitDeclarationOnly": true
   },
-  "files": ["src/index.ts"]
+  "files": ["src/index.ts", "src/wrapper.ts"]
 }

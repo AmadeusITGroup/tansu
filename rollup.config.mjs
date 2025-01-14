@@ -13,16 +13,20 @@ export default defineConfig({
   output: [
     {
       format: 'cjs',
-      file: './dist/package/index.cjs',
+      dir: './dist/package',
+      entryFileNames: (chunk) => `${chunk.name}.cjs`,
     },
     {
       format: 'es',
-      file: './dist/package/index.js',
+      dir: './dist/package',
+      entryFileNames: (chunk) => `${chunk.name}.js`,
     },
   ],
-  input: './src/index.ts',
+  input: { index: './src/index.ts', wrapper: './src/wrapper.ts' },
   plugins: [
-    typescript(),
+    typescript({
+      tsconfig: 'tsconfig.d.json',
+    }),
     {
       name: 'package',
       async buildStart() {
@@ -36,9 +40,11 @@ export default defineConfig({
         pkg.typings = removeDistPackage(pkg.typings);
         pkg.main = removeDistPackage(pkg.main);
         pkg.module = removeDistPackage(pkg.module);
-        pkg.exports.types = removeDistPackage(pkg.exports.types);
-        pkg.exports.require = removeDistPackage(pkg.exports.require);
-        pkg.exports.default = removeDistPackage(pkg.exports.default);
+        for (const entryPoint of Object.values(pkg.exports)) {
+          entryPoint.types = removeDistPackage(entryPoint.types);
+          entryPoint.require = removeDistPackage(entryPoint.require);
+          entryPoint.default = removeDistPackage(entryPoint.default);
+        }
         this.emitFile({ type: 'asset', fileName: 'package.json', source: JSON.stringify(pkg) });
         this.emitFile({
           type: 'asset',
