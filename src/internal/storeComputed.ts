@@ -13,7 +13,7 @@ export class RawStoreComputed<T>
   implements Consumer, ActiveConsumer
 {
   private producerIndex = 0;
-  private producerLinks: BaseLink<any>[] = [];
+  public producerLinks: BaseLink<any>[] = [];
   private epoch = -1;
 
   constructor(private readonly computeFn: () => T) {
@@ -59,7 +59,10 @@ export class RawStoreComputed<T>
     producerLinks[producerIndex] = link;
     this.producerIndex = producerIndex + 1;
     updateLinkProducerValue(link);
-    if (producer.flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
+    if (
+      !(this.flags & RawStoreFlags.COMPUTED_WITH_ONUSE) &&
+      producer.flags & RawStoreFlags.HAS_VISIBLE_ONUSE
+    ) {
       this.flags |= RawStoreFlags.HAS_VISIBLE_ONUSE;
     }
     return producer.updateLink(link);
@@ -72,6 +75,7 @@ export class RawStoreComputed<T>
       link.producer.registerConsumer(link);
     }
     this.flags |= RawStoreFlags.DIRTY;
+    super.startUse();
   }
 
   override endUse(): void {
@@ -80,6 +84,7 @@ export class RawStoreComputed<T>
       const link = producerLinks[i];
       link.producer.unregisterConsumer(link);
     }
+    super.endUse();
   }
 
   override areProducersUpToDate(): boolean {
@@ -103,9 +108,10 @@ export class RawStoreComputed<T>
     const prevActiveConsumer = setActiveConsumer(this);
     try {
       this.producerIndex = 0;
-      this.flags &= ~RawStoreFlags.HAS_VISIBLE_ONUSE;
-      const computeFn = this.computeFn;
-      value = computeFn();
+      if (!(this.flags & RawStoreFlags.COMPUTED_WITH_ONUSE)) {
+        this.flags &= ~RawStoreFlags.HAS_VISIBLE_ONUSE;
+      }
+      value = this.computeFn.call(this.wrapper);
       this.error = null;
     } catch (error) {
       value = COMPUTED_ERRORED;

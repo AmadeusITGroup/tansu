@@ -2,6 +2,7 @@ import type { BaseLink, RawStore } from './store';
 
 export interface ActiveConsumer {
   addProducer: <T, L extends BaseLink<T>>(store: RawStore<T, L>) => T;
+  wrapper?: any;
 }
 
 export let activeConsumer: ActiveConsumer | null = null;

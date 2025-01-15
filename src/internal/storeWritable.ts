@@ -32,6 +32,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   equalFn = equal<T>;
   private equalCache: Record<number, boolean> | null = null;
   consumerLinks: ProducerConsumerLink<T>[] = [];
+  wrapper?: any;
 
   newLink(consumer: Consumer): ProducerConsumerLink<T> {
     return {
@@ -102,8 +103,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   updateValue(): void {}
 
   protected equal(a: T, b: T): boolean {
-    const equalFn = this.equalFn;
-    return equalFn(a, b);
+    return this.equalFn.call(this.wrapper, a, b);
   }
 
   protected increaseEpoch(): void {
