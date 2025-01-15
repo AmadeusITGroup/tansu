@@ -56,11 +56,10 @@ describe('watch and unwatch', () => {
     let c = new Signal.Computed(() => (d++, which.get()));
     let w = new Signal.subtle.Watcher(() => n++);
 
-    w.watch(c);
     expect(w1 + w2 + u1 + u2 + n + d).toBe(0);
     expect(Signal.subtle.hasSinks(s1)).toBe(false);
     expect(Signal.subtle.hasSinks(s2)).toBe(false);
-    expect(w.getPending()).toStrictEqual([c]);
+    w.watch(c); // watch triggers the evaluation of c
 
     expect(c.get()).toBe(1);
     expect(w1).toBe(1);

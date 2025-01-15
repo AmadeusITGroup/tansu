@@ -39,11 +39,11 @@ describe('Pruning', () => {
     let n3 = 0;
     const c3 = new Signal.Computed(() => (n3++, c2.get()));
     const w = new Signal.subtle.Watcher(() => {});
-    w.watch(c3);
 
-    expect(n).toBe(0);
-    expect(n2).toBe(0);
-    expect(n3).toBe(0);
+    w.watch(c3); // watch triggers the evaluation of c3
+    expect(n).toBe(1);
+    expect(n2).toBe(1);
+    expect(n3).toBe(1);
 
     expect(c3.get()).toBe(5);
     expect(n).toBe(1);

@@ -41,9 +41,10 @@ describe('Errors', () => {
       throw s.get();
     });
     const w = new Signal.subtle.Watcher(() => {});
-    w.watch(c);
 
     expect(n).toBe(0);
+    w.watch(c); // watch triggers the evaluation of c
+    expect(n).toBe(1);
     expect(() => c.get()).toThrowError('first');
     expect(n).toBe(1);
     expect(() => c.get()).toThrowError('first');

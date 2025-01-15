@@ -200,7 +200,7 @@ export namespace Signal {
         for (const signal of signals) {
           node.addProducer(signal[NODE]);
         }
-        node.dirty = false; // Give the watcher a chance to trigger again
+        node.update(); // update signals and mark non-dirty
       }
 
       // Remove these signals from the watched set (e.g., for an effect which is disposed)

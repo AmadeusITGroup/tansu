@@ -1,4 +1,4 @@
-import type { BaseLink, Consumer, RawStore } from './store';
+import { updateLinkProducerValue, type BaseLink, type Consumer, type RawStore } from './store';
 
 export class RawWatcher implements Consumer {
   producerLinks: BaseLink<any>[] = [];
@@ -11,6 +11,15 @@ export class RawWatcher implements Consumer {
     if (!this.dirty) {
       this.dirty = true;
       this.notifyFn.call(this.wrapper);
+    }
+  }
+
+  update(): void {
+    try {
+      this.dirty = true;
+      this.producerLinks.forEach(updateLinkProducerValue);
+    } finally {
+      this.dirty = false;
     }
   }
 
