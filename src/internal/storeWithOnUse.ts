@@ -16,6 +16,7 @@ export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
 
   override startUse(): void {
     this.cleanUpFn = normalizeUnsubscribe(this.onUseFn());
+    super.startUse();
   }
 
   override endUse(): void {
@@ -24,5 +25,6 @@ export class RawStoreWithOnUse<T> extends RawStoreTrackingUsage<T> {
       this.cleanUpFn = null;
       cleanUpFn();
     }
+    super.endUse();
   }
 }

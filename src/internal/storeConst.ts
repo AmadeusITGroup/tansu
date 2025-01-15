@@ -18,6 +18,9 @@ export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
   }
   unregisterConsumer(_link: BaseLink<T>): void {}
   updateValue(): void {}
+  recCallOnUse(): boolean {
+    return false;
+  }
   isLinkUpToDate(_link: BaseLink<T>): boolean {
     return true;
   }
