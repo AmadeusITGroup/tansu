@@ -67,6 +67,18 @@ abstract class RawStoreDerived<T, S extends StoresInput>
     super.endUse();
   }
 
+  override recCallOnUse(): boolean {
+    if (super.recCallOnUse()) {
+      const producerLinks = this.producerLinks!;
+      for (let i = 0, l = producerLinks.length; i < l; i++) {
+        const link = producerLinks[i];
+        const producer = link.producer;
+        producer.recCallOnUse();
+      }
+    }
+    return false;
+  }
+
   override areProducersUpToDate(): boolean {
     const producerLinks = this.producerLinks!;
     let alreadyUpToDate = this.value !== COMPUTED_UNSET;

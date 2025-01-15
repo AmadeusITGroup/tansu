@@ -29,6 +29,7 @@ export interface RawStore<T, Link extends BaseLink<T> = BaseLink<T>>
   newLink(consumer: Consumer): Link;
   registerConsumer(link: Link): Link;
   unregisterConsumer(link: Link): void;
+  recCallOnUse(): boolean;
   updateValue(): void;
   isLinkUpToDate(link: Link): boolean;
   updateLink(link: Link): T;

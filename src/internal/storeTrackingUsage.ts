@@ -56,6 +56,10 @@ export class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
     return false;
   }
 
+  override recCallOnUse(): boolean {
+    return this.callOnUse();
+  }
+
   override updateValue(): void {
     this.callOnUse();
   }

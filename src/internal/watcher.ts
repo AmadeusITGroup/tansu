@@ -18,6 +18,7 @@ export class RawWatcher implements Consumer {
     const link = producer.newLink(this);
     this.producerLinks.push(link);
     producer.registerConsumer(link);
+    link.producer.recCallOnUse();
   }
 
   removeProducer(producer: RawStore<any>): void {

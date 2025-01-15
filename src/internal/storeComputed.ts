@@ -33,6 +33,18 @@ export class RawStoreComputed<T>
     this.epoch = epoch;
   }
 
+  override recCallOnUse(): boolean {
+    if (super.recCallOnUse()) {
+      const producerLinks = this.producerLinks;
+      for (let i = 0, l = producerLinks.length; i < l; i++) {
+        const link = producerLinks[i];
+        const producer = link.producer;
+        producer.recCallOnUse();
+      }
+    }
+    return false;
+  }
+
   override get(): T {
     if (
       !activeConsumer &&

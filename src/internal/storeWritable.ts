@@ -101,6 +101,9 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
 
   protected checkUnused(): void {}
   updateValue(): void {}
+  recCallOnUse(): boolean {
+    return false;
+  }
 
   protected equal(a: T, b: T): boolean {
     return this.equalFn.call(this.wrapper, a, b);
