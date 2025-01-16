@@ -11,6 +11,7 @@ export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
   newLink(_consumer: Consumer): BaseLink<T> {
     return {
       producer: this,
+      nextInConsumer: null,
     };
   }
   registerConsumer(link: BaseLink<T>): BaseLink<T> {

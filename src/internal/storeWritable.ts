@@ -1,7 +1,7 @@
 import type { Subscriber, UnsubscribeFunction, UnsubscribeObject, Updater } from '../types';
 import { batch } from './batch';
 import { equal } from './equal';
-import type { Consumer, RawStore } from './store';
+import type { BaseLink, Consumer, RawStore } from './store';
 import { RawStoreFlags } from './store';
 import { SubscribeConsumer } from './subscribeConsumer';
 import { activeConsumer } from './untrack';
@@ -16,7 +16,7 @@ export const checkNotInNotificationPhase = (): void => {
 
 export let epoch = 0;
 
-export interface ProducerConsumerLink<T> {
+export interface ProducerConsumerLink<T> extends BaseLink<T> {
   value: T;
   version: number;
   producer: RawStore<T, ProducerConsumerLink<T>>;
@@ -43,6 +43,7 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
       nextInProducer: null,
       prevInProducer: null,
       consumer,
+      nextInConsumer: null,
       skipMarkDirty: false,
     };
   }
