@@ -37,7 +37,8 @@ import type { RawStoreWritable } from './internal/storeWritable';
 
 const expectCorrectlyCleanedUp = <T>(store: StoreInput<T>) => {
   const rawStore = (store as any)[rawStoreSymbol] as RawStoreWritable<T>;
-  expect(rawStore.consumerLinks.length).toBe(0);
+  expect(rawStore.consumerFirst).toBe(null);
+  expect(rawStore.consumerLast).toBe(null);
   expect(rawStore.flags & RawStoreFlags.START_USE_CALLED).toBeFalsy();
 };
 

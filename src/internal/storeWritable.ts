@@ -20,7 +20,8 @@ export interface ProducerConsumerLink<T> {
   value: T;
   version: number;
   producer: RawStore<T, ProducerConsumerLink<T>>;
-  indexInProducer: number;
+  prevInProducer: ProducerConsumerLink<T> | null;
+  nextInProducer: ProducerConsumerLink<T> | null;
   consumer: Consumer;
   skipMarkDirty: boolean;
 }
@@ -31,14 +32,16 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   private version = 0;
   equalFn = equal<T>;
   private equalCache: Record<number, boolean> | null = null;
-  consumerLinks: ProducerConsumerLink<T>[] = [];
+  consumerFirst: ProducerConsumerLink<T> | null = null;
+  consumerLast: ProducerConsumerLink<T> | null = null;
 
   newLink(consumer: Consumer): ProducerConsumerLink<T> {
     return {
       version: -1,
       value: undefined as any,
       producer: this,
-      indexInProducer: 0,
+      nextInProducer: null,
+      prevInProducer: null,
       consumer,
       skipMarkDirty: false,
     };
@@ -71,30 +74,40 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
   }
 
   registerConsumer(link: ProducerConsumerLink<T>): ProducerConsumerLink<T> {
-    const consumerLinks = this.consumerLinks;
-    const indexInProducer = consumerLinks.length;
-    link.indexInProducer = indexInProducer;
-    consumerLinks[indexInProducer] = link;
+    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
+    // there should be no way to trigger this error.
+    /* v8 ignore next 3 */
+    if (link.nextInProducer || link.prevInProducer) {
+      throw new Error('assert failed: registerConsumer with already used link');
+    }
+    link.prevInProducer = this.consumerLast;
+    const last = this.consumerLast;
+    if (last) {
+      last.nextInProducer = link;
+    } else {
+      this.consumerFirst = link;
+    }
+    this.consumerLast = link;
     return link;
   }
 
   unregisterConsumer(link: ProducerConsumerLink<T>): void {
-    const consumerLinks = this.consumerLinks;
-    const index = link.indexInProducer;
-    // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
-    // there should be no way to trigger this error.
-    /* v8 ignore next 3 */
-    if (consumerLinks[index] !== link) {
-      throw new Error('assert failed: invalid indexInProducer');
+    const next = link.nextInProducer;
+    const prev = link.prevInProducer;
+    link.nextInProducer = null;
+    link.prevInProducer = null;
+    if (next) {
+      next.prevInProducer = prev;
+    } else {
+      this.consumerLast = prev;
     }
-    // swap with the last item to avoid shifting the array
-    const lastConsumerLink = consumerLinks.pop()!;
-    const isLast = link === lastConsumerLink;
-    if (!isLast) {
-      consumerLinks[index] = lastConsumerLink;
-      lastConsumerLink.indexInProducer = index;
-    } else if (index === 0) {
-      this.checkUnused();
+    if (prev) {
+      prev.nextInProducer = next;
+    } else {
+      this.consumerFirst = next;
+      if (!next) {
+        this.checkUnused();
+      }
     }
   }
 
@@ -132,11 +145,12 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     const prevNotificationPhase = notificationPhase;
     notificationPhase = true;
     try {
-      const consumerLinks = this.consumerLinks;
-      for (let i = 0, l = consumerLinks.length; i < l; i++) {
-        const link = consumerLinks[i];
-        if (link.skipMarkDirty) continue;
-        link.consumer.markDirty();
+      let link = this.consumerFirst;
+      while (link) {
+        if (!link.skipMarkDirty) {
+          link.consumer.markDirty();
+        }
+        link = link.nextInProducer;
       }
     } finally {
       notificationPhase = prevNotificationPhase;
