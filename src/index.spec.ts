@@ -2848,6 +2848,28 @@ describe('stores', () => {
       a.next(4);
       expect(values).toEqual([0, 6]);
     });
+
+    it('should work to unsubscribe inside batch', () => {
+      const valuesA: number[] = [];
+      const valuesB: number[] = [];
+      const a = writable(0);
+      const b = computed(() => a() + 1);
+      const unsubscribeA = a.subscribe((v) => {
+        valuesA.push(v);
+      });
+      const unsubscribeB = b.subscribe((v) => {
+        valuesB.push(v);
+      });
+      expect(valuesA).toEqual([0]);
+      expect(valuesB).toEqual([1]);
+      batch(() => {
+        a.set(5);
+        unsubscribeB();
+      });
+      expect(valuesA).toEqual([0, 5]);
+      expect(valuesB).toEqual([1]);
+      unsubscribeA();
+    });
   });
 
   describe('Listeners and batch timing', () => {

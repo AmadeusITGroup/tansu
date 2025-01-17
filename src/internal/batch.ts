@@ -1,7 +1,10 @@
+import { createQueue } from './linkedQueue';
 import type { SubscribeConsumer } from './subscribeConsumer';
 
-export const subscribersQueue: SubscribeConsumer<any, any>[] = [];
 let willProcessQueue = false;
+const { add, remove, shift } = createQueue<SubscribeConsumer<any, any>>();
+
+export { add as addToQueue, remove as removeFromQueue };
 
 /**
  * Batches multiple changes to stores while calling the provided function,
@@ -53,8 +56,8 @@ export const batch = <T>(fn: () => T): T => {
     res = fn();
   } finally {
     if (needsProcessQueue) {
-      while (subscribersQueue.length > 0) {
-        const consumer = subscribersQueue.shift()!;
+      let consumer = shift();
+      while (consumer) {
         try {
           consumer.notify();
         } catch (e) {
@@ -65,6 +68,7 @@ export const batch = <T>(fn: () => T): T => {
             error = e;
           }
         }
+        consumer = shift();
       }
       willProcessQueue = false;
     }
