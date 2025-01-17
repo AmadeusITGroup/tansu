@@ -1,9 +1,11 @@
+import { createQueue, type QueueItem } from './linkedQueue';
 import { RawStoreFlags } from './store';
 import { checkNotInNotificationPhase, RawStoreWritable } from './storeWritable';
 import { activeConsumer, untrack } from './untrack';
 
-let flushUnusedQueue: RawStoreTrackingUsage<any>[] | null = null;
+const { shift, add, remove } = createQueue<RawStoreTrackingUsage<any>>();
 let inFlushUnused = false;
+let plannedFlushUnused = false;
 
 export const flushUnused = (): void => {
   // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
@@ -12,24 +14,27 @@ export const flushUnused = (): void => {
   if (inFlushUnused) {
     throw new Error('assert failed: recursive flushUnused call');
   }
+  plannedFlushUnused = false;
   inFlushUnused = true;
   try {
-    const queue = flushUnusedQueue;
-    if (queue) {
-      flushUnusedQueue = null;
-      for (let i = 0, l = queue.length; i < l; i++) {
-        const producer = queue[i];
-        producer.flags &= ~RawStoreFlags.FLUSH_PLANNED;
-        producer.checkUnused();
-      }
+    let producer = shift();
+    while (producer) {
+      producer.flags &= ~RawStoreFlags.FLUSH_PLANNED;
+      producer.checkUnused();
+      producer = shift();
     }
   } finally {
     inFlushUnused = false;
   }
 };
 
-export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
+export abstract class RawStoreTrackingUsage<T>
+  extends RawStoreWritable<T>
+  implements QueueItem<RawStoreTrackingUsage<any>>
+{
   private extraUsages = 0;
+  next: RawStoreTrackingUsage<any> | null = null;
+  prev: RawStoreTrackingUsage<any> | null = null;
   abstract startUse(): void;
   abstract endUse(): void;
 
@@ -41,6 +46,10 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       /* v8 ignore next 3 */
       if (!this.extraUsages && !this.consumerFirst) {
         throw new Error('assert failed: untracked producer usage');
+      }
+      if (flags & RawStoreFlags.FLUSH_PLANNED) {
+        remove(this);
+        this.flags &= ~RawStoreFlags.FLUSH_PLANNED;
       }
       this.flags |= RawStoreFlags.START_USE_CALLED;
       untrack(() => this.startUse());
@@ -55,11 +64,11 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
         untrack(() => this.endUse());
       } else if (!(flags & RawStoreFlags.FLUSH_PLANNED)) {
         this.flags |= RawStoreFlags.FLUSH_PLANNED;
-        if (!flushUnusedQueue) {
-          flushUnusedQueue = [];
+        if (!plannedFlushUnused) {
+          plannedFlushUnused = true;
           queueMicrotask(flushUnused);
         }
-        flushUnusedQueue.push(this);
+        add(this);
       }
     }
   }
