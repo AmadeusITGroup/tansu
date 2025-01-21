@@ -329,7 +329,9 @@ While it is acceptable for these frameworks to defer these calls since their goa
 
 The problem with synchronous subscriptions is that it can create "glitches". Subscribers and computed store callbacks that are run too many times can create incorrect intermediate values.
 
-Svelte stores resolved the [diamond dependency issue](https://github.com/sveltejs/svelte/pull/2955), but it does not match all the use-cases.
+See for example the [asymmetric diamond dependency problem](https://github.com/AmadeusITGroup/tansu/pull/31), which still exists in Svelte stores, while it has been fixed in Tansu.
+
+There is also another use case.
 
 Let's have a look at the following example:
 
