@@ -37,7 +37,8 @@ import type { RawStoreWritable } from './internal/storeWritable';
 
 const expectCorrectlyCleanedUp = <T>(store: StoreInput<T>) => {
   const rawStore = (store as any)[rawStoreSymbol] as RawStoreWritable<T>;
-  expect(rawStore.consumerLinks.length).toBe(0);
+  expect(rawStore.consumerFirst).toBe(null);
+  expect(rawStore.consumerLast).toBe(null);
   expect(rawStore.flags & RawStoreFlags.START_USE_CALLED).toBeFalsy();
 };
 
@@ -2846,6 +2847,28 @@ describe('stores', () => {
       unsubscribe();
       a.next(4);
       expect(values).toEqual([0, 6]);
+    });
+
+    it('should work to unsubscribe inside batch', () => {
+      const valuesA: number[] = [];
+      const valuesB: number[] = [];
+      const a = writable(0);
+      const b = computed(() => a() + 1);
+      const unsubscribeA = a.subscribe((v) => {
+        valuesA.push(v);
+      });
+      const unsubscribeB = b.subscribe((v) => {
+        valuesB.push(v);
+      });
+      expect(valuesA).toEqual([0]);
+      expect(valuesB).toEqual([1]);
+      batch(() => {
+        a.set(5);
+        unsubscribeB();
+      });
+      expect(valuesA).toEqual([0, 5]);
+      expect(valuesB).toEqual([1]);
+      unsubscribeA();
     });
   });
 
