@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1736527092786,
+  "lastUpdate": 1737538129699,
   "repoUrl": "https://github.com/AmadeusITGroup/tansu",
   "entries": {
     "Tansu benchmarks": [
@@ -1064,6 +1064,260 @@ window.BENCHMARK_DATA = {
           {
             "name": "benchmarks/js-reactivity-benchmarks/kairo/unstable.bench.ts > unstable",
             "value": 1452.847580958918,
+            "unit": "Hz"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "david-emmanuel.divernois@amadeus.com",
+            "name": "divdavem",
+            "username": "divdavem"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0d4e9a3109893cf0c0b255771cac9d796f094563",
+          "message": "doc: fix mistake about diamond dependency problem in Svelte stores (#149)",
+          "timestamp": "2025-01-22T10:07:16+01:00",
+          "tree_id": "97440def8250d6ce6292e138f6a795c8c96acb49",
+          "url": "https://github.com/AmadeusITGroup/tansu/commit/0d4e9a3109893cf0c0b255771cac9d796f094563"
+        },
+        "date": 1737538129230,
+        "tool": "customBiggerIsBetter",
+        "benches": [
+          {
+            "name": "benchmarks/basic.bench.ts > creating base stores > writable",
+            "value": 7137476.543957878,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > creating base stores > readable",
+            "value": 8187909.116341502,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > creating base stores > new StoreClass",
+            "value": 6381761.7191923475,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > creating derived stores > computed",
+            "value": 5085514.50485897,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > creating derived stores > derived",
+            "value": 3377943.2028051093,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > creating derived stores > new DoubleStoreClass",
+            "value": 4121374.499835322,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > updating derived stores > computed",
+            "value": 1561340.2231952639,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > updating derived stores > derived",
+            "value": 1840387.2417600793,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > updating derived stores > DoubleStoreClass",
+            "value": 1648279.2945360553,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > updating writable stores > without subscriber",
+            "value": 9942592.707493907,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/basic.bench.ts > updating writable stores > with subscriber",
+            "value": 4871292.538622022,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/cellxBench.bench.ts > cellx1000",
+            "value": 51.15346066333398,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/cellxBench.bench.ts > cellx2500",
+            "value": 19.110510755689724,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/cellxBench.bench.ts > cellx5000",
+            "value": 4.771322844258225,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic simple component",
+            "value": 0.4121161621526651,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic dynamic component",
+            "value": 0.7341501477746206,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic large web app",
+            "value": 0.3401443734391499,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic wide dense",
+            "value": 0.29410744828618857,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic deep",
+            "value": 0.9658553841253311,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/dynamic.bench.ts > dynamic very dynamic",
+            "value": 0.6978163652289233,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/molBench.bench.ts > molBench",
+            "value": 1.318505821905176,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > onlyCreateDataSignals",
+            "value": 766.6968453719228,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations0to1",
+            "value": 173.56879124922162,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1to1",
+            "value": 46.28262908235369,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations2to1",
+            "value": 162.3837133840638,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations4to1",
+            "value": 186.51400006327668,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1000to1",
+            "value": 442.788276230197,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1to2",
+            "value": 56.975122942246365,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1to4",
+            "value": 116.85432560290782,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1to8",
+            "value": 123.99224106152307,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > createComputations1to1000",
+            "value": 130.13509434561703,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations1to1",
+            "value": 45.019057428243464,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations2to1",
+            "value": 81.87077811117726,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations4to1",
+            "value": 142.02958129389376,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations1000to1",
+            "value": 157.35511875514405,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations1to2",
+            "value": 47.12448577147517,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations1to4",
+            "value": 46.35919751788702,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/sBench.bench.ts > updateComputations1to1000",
+            "value": 45.16526682976944,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/avoidable.bench.ts > avoidablePropagation",
+            "value": 87.32716913736697,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/broad.bench.ts > broad",
+            "value": 225.42861690530427,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/deep.bench.ts > deep",
+            "value": 601.5729361537487,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/diamond.bench.ts > diamond",
+            "value": 153.0957981508172,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/mux.bench.ts > mux",
+            "value": 391.62182646705395,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/repeated.bench.ts > repeated",
+            "value": 797.99040161983,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/triangle.bench.ts > triangle",
+            "value": 616.1580386744447,
+            "unit": "Hz"
+          },
+          {
+            "name": "benchmarks/js-reactivity-benchmarks/kairo/unstable.bench.ts > unstable",
+            "value": 1472.6887444503384,
             "unit": "Hz"
           }
         ]
