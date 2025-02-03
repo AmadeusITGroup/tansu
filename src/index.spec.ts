@@ -3,7 +3,7 @@ import { Component, Injectable, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type {
   OnUseArgument,
   Readable,
@@ -2112,40 +2112,47 @@ describe('stores', () => {
       unsubscribe();
     });
 
-    it('should work with DebounceStore example', () => {
-      class DebounceStore<T> extends DerivedStore<T, SubscribableStore<T>> {
-        constructor(
-          store: SubscribableStore<T>,
-          initialValue: T,
-          private _delay: number
-        ) {
-          super(store, initialValue);
+    describe('with fake timers', () => {
+      beforeAll(() => {
+        vi.useFakeTimers();
+      });
+      afterAll(() => {
+        vi.useRealTimers();
+      });
+      it('should work with DebounceStore example', () => {
+        class DebounceStore<T> extends DerivedStore<T, SubscribableStore<T>> {
+          constructor(
+            store: SubscribableStore<T>,
+            initialValue: T,
+            private _delay: number
+          ) {
+            super(store, initialValue);
+          }
+          protected derive(value: T) {
+            const timeout = setTimeout(() => this.set(value), this._delay);
+            return () => clearTimeout(timeout);
+          }
         }
-        protected derive(value: T) {
-          const timeout = setTimeout(() => this.set(value), this._delay);
-          return () => clearTimeout(timeout);
-        }
-      }
-      vi.useFakeTimers();
-      const a = writable(1);
-      const b = new DebounceStore(a, 0, 100);
-      const values: number[] = [];
-      const unsubscribe = b.subscribe((value) => values.push(value));
-      expect(values).toEqual([0]);
-      vi.advanceTimersByTime(99);
-      expect(values).toEqual([0]);
-      vi.advanceTimersByTime(1);
-      expect(values).toEqual([0, 1]);
-      a.set(2);
-      vi.advanceTimersByTime(1);
-      a.set(3);
-      vi.advanceTimersByTime(99);
-      expect(values).toEqual([0, 1]);
-      vi.advanceTimersByTime(1);
-      expect(values).toEqual([0, 1, 3]);
-      unsubscribe();
-    });
 
+        const a = writable(1);
+        const b = new DebounceStore(a, 0, 100);
+        const values: number[] = [];
+        const unsubscribe = b.subscribe((value) => values.push(value));
+        expect(values).toEqual([0]);
+        vi.advanceTimersByTime(99);
+        expect(values).toEqual([0]);
+        vi.advanceTimersByTime(1);
+        expect(values).toEqual([0, 1]);
+        a.set(2);
+        vi.advanceTimersByTime(1);
+        a.set(3);
+        vi.advanceTimersByTime(99);
+        expect(values).toEqual([0, 1]);
+        vi.advanceTimersByTime(1);
+        expect(values).toEqual([0, 1, 3]);
+        unsubscribe();
+      });
+    });
     it('should infer types automatically in the async case', () => {
       const a = writable(1);
       const b = writable(2);
