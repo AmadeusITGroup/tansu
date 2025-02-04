@@ -64,10 +64,9 @@ export class RawStoreWritable<T> implements RawStore<T, ProducerConsumerLink<T>>
     return res;
   }
 
-  updateLink(link: ProducerConsumerLink<T>): T {
+  updateLink(link: ProducerConsumerLink<T>): void {
     link.value = this.value;
     link.version = this.version;
-    return this.readValue();
   }
 
   registerConsumer(link: ProducerConsumerLink<T>): ProducerConsumerLink<T> {

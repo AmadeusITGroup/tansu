@@ -24,9 +24,11 @@ import { RawStoreWithOnUse } from './internal/storeWithOnUse';
 import { RawStoreWritable } from './internal/storeWritable';
 import { noop } from './internal/subscribeConsumer';
 import { untrack } from './internal/untrack';
+import { WatcherConsumer } from './internal/watch';
 import type {
   AsyncDeriveFn,
   AsyncDeriveOptions,
+  InteropWatcherFactory,
   OnUseFn,
   Readable,
   ReadableSignal,
@@ -41,15 +43,18 @@ import type {
   UnsubscribeObject,
   Unsubscriber,
   Updater,
+  Watcher,
   Writable,
   WritableSignal,
 } from './types';
 
-export { batch } from './internal/batch';
+import { batch } from './internal/batch';
+import { RawStoreFromWatch } from './internal/storeFromWatch';
 export { equal } from './internal/equal';
 export { symbolObservable } from './internal/exposeRawStores';
 export { untrack } from './internal/untrack';
 export type * from './types';
+export { batch };
 
 /**
  * Returns a wrapper (for the given store) which only exposes the {@link ReadableSignal} interface.
@@ -508,4 +513,50 @@ export function computed<T>(
   options?: Omit<StoreOptions<T>, 'onUse'>
 ): ReadableSignal<T> {
   return exposeRawStore(applyStoreOptions(new RawStoreComputed(fn), options));
+}
+
+/**
+ * Creates a watcher on a store and returns it.
+ *
+ * @remarks
+ *
+ * A watcher calls synchronously its notify function when any store in the set of transitive dependencies of the watched store is changing.
+ *
+ * Note that the notify function must not read or write any store. It should not do any heavy task, it usually only schedules some work to be done later.
+ * It is called even inside {@link batch}.
+ *
+ * A watcher is initially created in the dirty state.
+ *
+ * When a watcher is in the dirty state, the notify function is not called until the {@link Watcher.update|update} method is called.
+ *
+ * The {@link Watcher.update|update} method clears the dirty state and updates the watched store, allowing the notify function to be called the next
+ * time any store in the set of transitive dependencies of the watched store changes.
+ *
+ * When a watcher is no longer needed, it should be destroyed by calling its {@link Watcher.destroy|destroy} method.
+ *
+ * @param store - store to watch
+ * @param notify - function that will be called synchronously when any store in the set of transitive dependencies of the watched store is changing
+ * @returns watcher object
+ */
+export function watch<T>(store: StoreInput<T>, notify: () => void): Watcher<T> {
+  const watcherConsumer = new WatcherConsumer(getRawStore(store), notify);
+  return {
+    isDirty: watcherConsumer.isDirty.bind(watcherConsumer),
+    update: watcherConsumer.update.bind(watcherConsumer),
+    get: watcherConsumer.get.bind(watcherConsumer),
+    destroy: watcherConsumer.destroy.bind(watcherConsumer),
+  };
+}
+
+/**
+ * Creates a tansu store from a watcher factory.
+ * @param watch - watcher factory
+ * @param options - store option. Allows to define the {@link StoreOptions.equal|equal} function, if needed
+ * @returns store containing the value returned by the computation function
+ */
+export function fromWatch<T>(
+  watch: InteropWatcherFactory<T>,
+  options?: Omit<StoreOptions<T>, 'onUse'>
+): ReadableSignal<T> {
+  return exposeRawStore(applyStoreOptions(new RawStoreFromWatch(watch), options));
 }

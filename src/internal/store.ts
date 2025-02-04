@@ -29,7 +29,8 @@ export interface RawStore<T, Link extends BaseLink<T> = BaseLink<T>>
   unregisterConsumer(link: Link): void;
   updateValue(): void;
   isLinkUpToDate(link: Link): boolean;
-  updateLink(link: Link): T;
+  updateLink(link: Link): void;
+  readValue(): T;
 }
 
 export const updateLinkProducerValue = <T>(link: BaseLink<T>): void => {

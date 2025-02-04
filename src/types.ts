@@ -260,3 +260,36 @@ export type AsyncDeriveFn<T, S> = (
 export interface AsyncDeriveOptions<T, S> extends Omit<StoreOptions<T>, 'onUse'> {
   derive: AsyncDeriveFn<T, S>;
 }
+
+/**
+ * Watcher interface.
+ */
+export interface Watcher<T> {
+  /**
+   * Whether the watcher is dirty (i.e. the {@link Watcher.update|update} method needs to be called before notify can be called).
+   */
+  isDirty(): boolean;
+
+  /**
+   * Clears the dirty state and updates the watched store.
+   * @returns true if the value of the watched store changed (since the last call of update) or false if it stayed the same.
+   */
+  update(): boolean;
+
+  /**
+   * Returns the current value of the watched store. Should only be called when the watcher is up-to-date (i.e. after calling {@link Watcher.update|update}).
+   */
+  get(): T;
+
+  /**
+   * Destroys the watcher.
+   *
+   * @remarks
+   *
+   * After a watcher is destroyed it should no longer be used and its notify function will no longer be called.
+   */
+  destroy(): void;
+}
+
+export type InteropWatcher<T> = Omit<Watcher<T>, 'isDirty'>;
+export type InteropWatcherFactory<T> = (notify: () => void) => InteropWatcher<T>;

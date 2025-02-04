@@ -82,7 +82,11 @@ abstract class RawStoreDerived<T, S extends StoresInput>
   override recompute(): void {
     try {
       this.callCleanUpFn();
-      const values = this.producerLinks!.map((link) => link.producer.updateLink(link));
+      const values = this.producerLinks!.map((link) => {
+        const producer = link.producer;
+        producer.updateLink(link);
+        return producer.readValue();
+      });
       this.cleanUpFn = normalizeUnsubscribe(this.derive(this.arrayMode ? values : values[0]));
     } catch (error) {
       this.error = error;
