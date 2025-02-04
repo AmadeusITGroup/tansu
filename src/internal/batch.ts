@@ -1,6 +1,4 @@
-import type { SubscribeConsumer } from './subscribeConsumer';
-
-export const subscribersQueue: SubscribeConsumer<any, any>[] = [];
+export const subscribersQueue: { process(): void }[] = [];
 let willProcessQueue = false;
 
 /**
@@ -56,7 +54,7 @@ export const batch = <T>(fn: () => T): T => {
       while (subscribersQueue.length > 0) {
         const consumer = subscribersQueue.shift()!;
         try {
-          consumer.notify();
+          consumer.process();
         } catch (e) {
           // an error in one consumer should not impact others
           if (success) {

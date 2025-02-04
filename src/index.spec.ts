@@ -5,6 +5,8 @@ import { BehaviorSubject, from } from 'rxjs';
 import { writable as svelteWritable } from 'svelte/store';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type {
+  InteropWatcher,
+  InteropWatcherFactory,
   OnUseArgument,
   Readable,
   ReadableSignal,
@@ -24,10 +26,12 @@ import {
   computed,
   derived,
   equal,
+  fromWatch,
   get,
   readable,
   symbolObservable,
   untrack,
+  watch,
   writable,
 } from './index';
 import { rawStoreSymbol } from './internal/exposeRawStores';
@@ -3563,6 +3567,200 @@ describe('stores', () => {
       expectCorrectlyCleanedUp(doubleStore);
       expectCorrectlyCleanedUp(doubleDoubleStore);
       expectCorrectlyCleanedUp(doubleDoubleDoubleStore);
+    });
+  });
+
+  describe('watch', () => {
+    it('should work', () => {
+      const onUseCalls: { onUnused: number }[] = [];
+      const store = writable(0, {
+        onUse: () => {
+          const call = { onUnused: 0 };
+          onUseCalls.push(call);
+          return () => {
+            call.onUnused++;
+          };
+        },
+      });
+      const notify = vi.fn();
+      const watcher = watch(store, notify);
+      expect(watcher.isDirty()).toBe(true);
+      expect(onUseCalls.length).toBe(0);
+      expect(watcher.update()).toBe(true);
+      expect(onUseCalls.length).toBe(1);
+      expect(onUseCalls[0].onUnused).toBe(0);
+      expect(watcher.isDirty()).toBe(false);
+      expect(watcher.get()).toBe(0);
+      expect(notify).not.toHaveBeenCalled();
+      store.set(1);
+      expect(notify).toHaveBeenCalledOnce();
+      notify.mockClear();
+      expect(watcher.isDirty()).toBe(true);
+      store.set(2);
+      expect(notify).not.toHaveBeenCalled();
+      expect(watcher.update()).toBe(true);
+      expect(watcher.isDirty()).toBe(false);
+      expect(watcher.get()).toBe(2);
+      expect(notify).not.toHaveBeenCalled();
+      store.set(3);
+      expect(notify).toHaveBeenCalledOnce();
+      expect(watcher.isDirty()).toBe(true);
+      notify.mockClear();
+      store.set(4);
+      store.set(2);
+      expect(notify).not.toHaveBeenCalled();
+      expect(watcher.update()).toBe(false);
+      expect(watcher.isDirty()).toBe(false);
+      expect(watcher.update()).toBe(false);
+      expect(watcher.get()).toBe(2);
+      watcher.destroy();
+      expect(() => watcher.get()).toThrowError('invalid watcher state');
+    });
+  });
+
+  describe('fromWatch', () => {
+    it('should work', () => {
+      let notify: () => void;
+      let isUpdated = true;
+      let value = 0;
+      const watcher = {
+        update: vi.fn(() => isUpdated),
+        get: vi.fn(() => value),
+        destroy: vi.fn(),
+      } satisfies InteropWatcher<number>;
+      const watchFn = vi.fn((notifyFn: () => void) => {
+        notify = notifyFn;
+        return watcher;
+      }) satisfies InteropWatcherFactory<number>;
+      const clearMocks = () => {
+        watchFn.mockClear();
+        watcher.update.mockClear();
+        watcher.get.mockClear();
+        watcher.destroy.mockClear();
+      };
+      const store = fromWatch(watchFn);
+      expect(watchFn).not.toHaveBeenCalled();
+      expect(store.get()).toBe(0);
+      expect(watchFn).toHaveBeenCalledOnce();
+      expect(watcher.update).toHaveBeenCalledOnce();
+      expect(watcher.get).toHaveBeenCalledOnce();
+      expect(watcher.destroy).toHaveBeenCalledOnce();
+      clearMocks();
+      const values: number[] = [];
+      const unsubscribe = store.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([0]);
+      expect(watchFn).toHaveBeenCalledOnce();
+      expect(watcher.update).toHaveBeenCalledOnce();
+      expect(watcher.get).toHaveBeenCalledOnce();
+      expect(watcher.destroy).not.toHaveBeenCalled();
+      clearMocks();
+      isUpdated = false;
+      batch(() => {
+        notify!();
+      });
+      expect(watcher.update).toHaveBeenCalledOnce();
+      expect(watchFn).not.toHaveBeenCalled();
+      expect(watcher.get).not.toHaveBeenCalled();
+      expect(watcher.destroy).not.toHaveBeenCalled();
+      clearMocks();
+      expect(values).toEqual([0]);
+      isUpdated = true;
+      value = 2;
+      batch(() => {
+        notify!();
+      });
+      expect(watcher.update).toHaveBeenCalledOnce();
+      expect(watcher.get).toHaveBeenCalledOnce();
+      expect(watcher.destroy).not.toHaveBeenCalled();
+      expect(watchFn).not.toHaveBeenCalled();
+      clearMocks();
+      expect(values).toEqual([0, 2]);
+      isUpdated = true;
+      watcher.get.mockImplementation(() => {
+        throw new Error('myerror');
+      });
+      expect(() => {
+        batch(() => {
+          notify!();
+        });
+      }).toThrowError('myerror');
+      expect(watcher.update).toHaveBeenCalledOnce();
+      expect(watcher.get).toHaveBeenCalledOnce();
+      expect(watcher.destroy).not.toHaveBeenCalled();
+      expect(watchFn).not.toHaveBeenCalled();
+      clearMocks();
+      expect(() => {
+        store.get();
+      }).toThrowError('myerror');
+      expect(values).toEqual([0, 2]);
+      expect(watcher.update).not.toHaveBeenCalled();
+      expect(watcher.get).not.toHaveBeenCalled();
+      expect(watcher.destroy).not.toHaveBeenCalled();
+      expect(watchFn).not.toHaveBeenCalled();
+      unsubscribe();
+      expect(watcher.destroy).toHaveBeenCalledOnce();
+      expect(watcher.update).not.toHaveBeenCalled();
+      expect(watcher.get).not.toHaveBeenCalled();
+      expect(watchFn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('watch / fromWatch', () => {
+    it('should work to convert back and forth a basic writable', () => {
+      const store = writable(0);
+      const otherStore = fromWatch((notify) => watch(store, notify));
+      expect(otherStore()).toBe(0);
+      store.set(1);
+      expect(otherStore()).toBe(1);
+      store.set(2);
+      expect(otherStore()).toBe(2);
+
+      const values: number[] = [];
+      const unsubscribe = otherStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([2]);
+      store.set(3);
+      expect(values).toEqual([2, 3]);
+      expect(otherStore()).toBe(3);
+      batch(() => {
+        store.set(4);
+        expect(otherStore()).toBe(4);
+        store.set(5);
+        store.set(3);
+      });
+      expect(values).toEqual([2, 3]);
+      unsubscribe();
+    });
+
+    it('should work to convert back and forth a computed', () => {
+      const store = writable(0);
+      const doubleStore = computed(() => store() * 2);
+      const otherStore = fromWatch((notify) => watch(doubleStore, notify));
+      expect(otherStore()).toBe(0);
+      store.set(1);
+      expect(otherStore()).toBe(2);
+      store.set(2);
+      expect(otherStore()).toBe(4);
+
+      const values: number[] = [];
+      const unsubscribe = otherStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([4]);
+      store.set(3);
+      expect(values).toEqual([4, 6]);
+      expect(otherStore()).toBe(6);
+      batch(() => {
+        store.set(4);
+        expect(otherStore()).toBe(8);
+        store.set(5);
+        store.set(3);
+      });
+      expect(values).toEqual([4, 6]);
+      unsubscribe();
     });
   });
 });

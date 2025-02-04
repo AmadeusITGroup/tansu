@@ -28,7 +28,7 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
   constructor(producer: RawStore<T, Link>, subscriber: Subscriber<T>) {
     this.subscriber = toSubscriberObject(subscriber);
     this.link = producer.registerConsumer(producer.newLink(this));
-    this.notify(true);
+    this.process(true);
   }
 
   unsubscribe(): void {
@@ -46,7 +46,7 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
     }
   }
 
-  notify(first = false): void {
+  process(first = false): void {
     this.dirtyCount--;
     if (this.dirtyCount === 0 && this.subscriber !== noopSubscriber) {
       const link = this.link;
@@ -55,9 +55,9 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
       if (producer.isLinkUpToDate(link) && !first) {
         this.subscriber.resume();
       } else {
+        producer.updateLink(link);
         // note that the following line can throw
-        const value = producer.updateLink(link);
-        this.subscriber.next(value);
+        this.subscriber.next(producer.readValue());
       }
     }
   }

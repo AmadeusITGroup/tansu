@@ -62,7 +62,8 @@ export class RawStoreComputed<T>
     if (producer.flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
       this.flags |= RawStoreFlags.HAS_VISIBLE_ONUSE;
     }
-    return producer.updateLink(link);
+    producer.updateLink(link);
+    return producer.readValue();
   }
 
   override startUse(): void {
