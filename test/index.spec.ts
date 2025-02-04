@@ -1787,6 +1787,31 @@ describe('stores', () => {
       expect(values).toEqual([0]);
     });
 
+    it('should throw when reaching the maximum number of derived iterations (on set, with batch)', () => {
+      const store = writable(0);
+      const wrongDerivedStore = derived(store, (value) => {
+        if (value < 0) {
+          store.set(value - 1); // there is no boundary
+        }
+        return value;
+      });
+      const values: number[] = [];
+      const unsubscribe = wrongDerivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([0]);
+      let reachedAfterSet = false;
+      expect(() => {
+        batch(() => {
+          store.set(-1);
+          reachedAfterSet = true;
+        });
+      }).toThrowError('reached maximum number of store changes in one shot');
+      expect(reachedAfterSet).toBe(true);
+      unsubscribe();
+      expect(values).toEqual([0]);
+    });
+
     it('should stop notifying following listeners if the value changed in a listener (finally no change)', () => {
       const store = writable(0);
       const values1: number[] = [];

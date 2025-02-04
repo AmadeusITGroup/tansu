@@ -21,7 +21,8 @@ export class RawStoreConst<T> implements RawStore<T, BaseLink<T>> {
   isLinkUpToDate(_link: BaseLink<T>): boolean {
     return true;
   }
-  updateLink(_link: BaseLink<T>): T {
+  updateLink(_link: BaseLink<T>): void {}
+  readValue(): T {
     return this.value;
   }
   get(): T {

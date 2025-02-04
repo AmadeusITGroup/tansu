@@ -1,7 +1,8 @@
+import { getActiveConsumer } from '../interop';
 import { type Flushable, inFlushUnused, planFlush } from './asyncFlush';
-import { RawStoreFlags } from './store';
+import { RawStoreFlags, type TansuInteropConsumer } from './store';
 import { checkNotInNotificationPhase, RawStoreWritable } from './storeWritable';
-import { activeConsumer, untrack } from './untrack';
+import { untrack } from './untrack';
 
 export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> implements Flushable {
   private extraUsages = 0;
@@ -36,11 +37,12 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> imple
 
   override get(): T {
     checkNotInNotificationPhase();
-    if (activeConsumer) {
-      return activeConsumer.addProducer(this);
-    } else {
-      this.extraUsages++;
-      try {
+    this.extraUsages++;
+    try {
+      const activeConsumer = getActiveConsumer();
+      const addTansuProducer = (activeConsumer as TansuInteropConsumer)?.addTansuProducer;
+      if (!addTansuProducer) {
+        // tansu calls updateValue in addTansuProducer, so we don't need to call it here
         this.updateValue();
         // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
         // there should be no way to trigger this error.
@@ -48,12 +50,17 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> imple
         if (this.flags & RawStoreFlags.DIRTY) {
           throw new Error('assert failed: store still dirty after updating it');
         }
-        return this.readValue();
-      } finally {
-        const extraUsages = --this.extraUsages;
-        if (extraUsages === 0) {
-          this.checkUnused();
-        }
+      }
+      if (addTansuProducer) {
+        addTansuProducer.call(activeConsumer, this);
+      } else if (activeConsumer) {
+        activeConsumer.addProducer(this);
+      }
+      return this.readValue();
+    } finally {
+      const extraUsages = --this.extraUsages;
+      if (extraUsages === 0) {
+        this.checkUnused();
       }
     }
   }

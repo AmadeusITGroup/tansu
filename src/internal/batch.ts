@@ -1,7 +1,4 @@
-import type { SubscribeConsumer } from './subscribeConsumer';
-
-export const subscribersQueue: SubscribeConsumer<any, any>[] = [];
-let willProcessQueue = false;
+import { beginBatch } from '../interop';
 
 /**
  * Batches multiple changes to stores while calling the provided function,
@@ -44,33 +41,16 @@ let willProcessQueue = false;
  * ```
  */
 export const batch = <T>(fn: () => T): T => {
-  const needsProcessQueue = !willProcessQueue;
-  willProcessQueue = true;
-  let success = true;
   let res;
-  let error;
+  let queueError;
+  const endBatch = beginBatch();
   try {
     res = fn();
   } finally {
-    if (needsProcessQueue) {
-      while (subscribersQueue.length > 0) {
-        const consumer = subscribersQueue.shift()!;
-        try {
-          consumer.notify();
-        } catch (e) {
-          // an error in one consumer should not impact others
-          if (success) {
-            // will throw the first error
-            success = false;
-            error = e;
-          }
-        }
-      }
-      willProcessQueue = false;
-    }
+    queueError = endBatch();
   }
-  if (success) {
-    return res;
+  if (queueError) {
+    throw queueError.error;
   }
-  throw error;
+  return res;
 };

@@ -1,5 +1,5 @@
 import type { Subscriber, SubscriberObject } from '../types';
-import { subscribersQueue } from './batch';
+import { afterBatch } from '../interop';
 import { updateLinkProducerValue, type BaseLink, type Consumer, type RawStore } from './store';
 
 export const noop = (): void => {};
@@ -26,9 +26,10 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
   private subscriber: SubscriberObject<T>;
   dirtyCount = 1;
   constructor(producer: RawStore<T, Link>, subscriber: Subscriber<T>) {
+    this.process = this.process.bind(this);
     this.subscriber = toSubscriberObject(subscriber);
     this.link = producer.registerConsumer(producer.newLink(this));
-    this.notify(true);
+    this.process(true);
   }
 
   unsubscribe(): void {
@@ -40,13 +41,13 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
 
   markDirty(): void {
     this.dirtyCount++;
-    subscribersQueue.push(this);
+    afterBatch(this.process);
     if (this.dirtyCount === 1) {
       this.subscriber.pause();
     }
   }
 
-  notify(first = false): void {
+  process(first = false): void {
     this.dirtyCount--;
     if (this.dirtyCount === 0 && this.subscriber !== noopSubscriber) {
       const link = this.link;
@@ -55,9 +56,9 @@ export class SubscribeConsumer<T, Link extends BaseLink<T>> implements Consumer 
       if (producer.isLinkUpToDate(link) && !first) {
         this.subscriber.resume();
       } else {
+        producer.updateLink(link);
         // note that the following line can throw
-        const value = producer.updateLink(link);
-        this.subscriber.next(value);
+        this.subscriber.next(producer.readValue());
       }
     }
   }
