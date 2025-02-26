@@ -5,5 +5,4 @@ Run:
  - `npm run build` to build the lib
  - `npm run format:check` to check that files are correctly formatted
  - `npm run format:fix` to reformat files
- - `npm run api` to run the api-extractor
- - `npm run docs` to run api-documenter based on the api-extractor result. It will generate the tsdoc markdown files.
+ - `npm run docs` to generate the documentation
