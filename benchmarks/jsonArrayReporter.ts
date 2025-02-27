@@ -19,8 +19,8 @@ class JsonArrayReporter implements Reporter {
           if (value) {
             results.push({
               name: `${name} > ${task.name}`,
-              unit: 'Hz',
-              value,
+              unit: 'ns',
+              value: 1000000000 / value,
             });
           }
         }
@@ -31,7 +31,7 @@ class JsonArrayReporter implements Reporter {
       processTasks(file.tasks, file.name);
     }
 
-    await writeFile('benchmarks.json', JSON.stringify(results, null, ' '));
+    await writeFile('vitest-benchmarks.json', JSON.stringify(results, null, ' '));
   }
 }
 
