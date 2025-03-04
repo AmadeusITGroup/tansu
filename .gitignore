@@ -3,4 +3,4 @@ dist
 temp
 coverage
 .angular
-benchmarks.json
+*benchmarks.json
