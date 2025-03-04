@@ -1,16 +1,4 @@
-import type { BaseLink, RawStore } from './store';
-
-export interface ActiveConsumer {
-  addProducer: <T, L extends BaseLink<T>>(store: RawStore<T, L>) => T;
-}
-
-export let activeConsumer: ActiveConsumer | null = null;
-
-export const setActiveConsumer = (consumer: ActiveConsumer | null): ActiveConsumer | null => {
-  const prevConsumer = activeConsumer;
-  activeConsumer = consumer;
-  return prevConsumer;
-};
+import { setActiveConsumer } from '../interop';
 
 /**
  * Stops the tracking of dependencies made by {@link computed} and calls the provided function.

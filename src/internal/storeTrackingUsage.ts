@@ -1,34 +1,10 @@
-import { RawStoreFlags } from './store';
+import { getActiveConsumer } from '../interop';
+import { type Flushable, inFlushUnused, planFlush } from './asyncFlush';
+import { RawStoreFlags, type TansuInteropConsumer } from './store';
 import { checkNotInNotificationPhase, RawStoreWritable } from './storeWritable';
-import { activeConsumer, untrack } from './untrack';
+import { untrack } from './untrack';
 
-let flushUnusedQueue: RawStoreTrackingUsage<any>[] | null = null;
-let inFlushUnused = false;
-
-export const flushUnused = (): void => {
-  // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
-  // there should be no way to trigger this error.
-  /* v8 ignore next 3 */
-  if (inFlushUnused) {
-    throw new Error('assert failed: recursive flushUnused call');
-  }
-  inFlushUnused = true;
-  try {
-    const queue = flushUnusedQueue;
-    if (queue) {
-      flushUnusedQueue = null;
-      for (let i = 0, l = queue.length; i < l; i++) {
-        const producer = queue[i];
-        producer.flags &= ~RawStoreFlags.FLUSH_PLANNED;
-        producer.checkUnused();
-      }
-    }
-  } finally {
-    inFlushUnused = false;
-  }
-};
-
-export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
+export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> implements Flushable {
   private extraUsages = 0;
   abstract startUse(): void;
   abstract endUse(): void;
@@ -53,24 +29,20 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       if (inFlushUnused || flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
         this.flags &= ~RawStoreFlags.START_USE_CALLED;
         untrack(() => this.endUse());
-      } else if (!(flags & RawStoreFlags.FLUSH_PLANNED)) {
-        this.flags |= RawStoreFlags.FLUSH_PLANNED;
-        if (!flushUnusedQueue) {
-          flushUnusedQueue = [];
-          queueMicrotask(flushUnused);
-        }
-        flushUnusedQueue.push(this);
+      } else {
+        planFlush(this);
       }
     }
   }
 
   override get(): T {
     checkNotInNotificationPhase();
-    if (activeConsumer) {
-      return activeConsumer.addProducer(this);
-    } else {
-      this.extraUsages++;
-      try {
+    this.extraUsages++;
+    try {
+      const activeConsumer = getActiveConsumer();
+      const addTansuProducer = (activeConsumer as TansuInteropConsumer)?.addTansuProducer;
+      if (!addTansuProducer) {
+        // tansu calls updateValue in addTansuProducer, so we don't need to call it here
         this.updateValue();
         // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
         // there should be no way to trigger this error.
@@ -78,12 +50,17 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
         if (this.flags & RawStoreFlags.DIRTY) {
           throw new Error('assert failed: store still dirty after updating it');
         }
-        return this.readValue();
-      } finally {
-        const extraUsages = --this.extraUsages;
-        if (extraUsages === 0) {
-          this.checkUnused();
-        }
+      }
+      if (addTansuProducer) {
+        addTansuProducer.call(activeConsumer, this);
+      } else if (activeConsumer) {
+        activeConsumer.addProducer(this);
+      }
+      return this.readValue();
+    } finally {
+      const extraUsages = --this.extraUsages;
+      if (extraUsages === 0) {
+        this.checkUnused();
       }
     }
   }

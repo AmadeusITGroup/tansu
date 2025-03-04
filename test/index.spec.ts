@@ -14,7 +14,7 @@ import type {
   StoresInputValues,
   SubscribableStore,
   SubscriberObject,
-} from './index';
+} from '../src/index';
 import {
   DerivedStore,
   Store,
@@ -29,11 +29,11 @@ import {
   symbolObservable,
   untrack,
   writable,
-} from './index';
-import { rawStoreSymbol } from './internal/exposeRawStores';
-import { RawStoreFlags } from './internal/store';
-import { flushUnused } from './internal/storeTrackingUsage';
-import type { RawStoreWritable } from './internal/storeWritable';
+} from '../src/index';
+import { rawStoreSymbol } from '../src/internal/exposeRawStores';
+import { RawStoreFlags } from '../src/internal/store';
+import { flushUnused } from '../src/internal/asyncFlush';
+import type { RawStoreWritable } from '../src/internal/storeWritable';
 
 const expectCorrectlyCleanedUp = <T>(store: StoreInput<T>) => {
   const rawStore = (store as any)[rawStoreSymbol] as RawStoreWritable<T>;
@@ -1783,6 +1783,31 @@ describe('stores', () => {
       expect(() => {
         store.set(-1);
       }).toThrowError('reached maximum number of store changes in one shot');
+      unsubscribe();
+      expect(values).toEqual([0]);
+    });
+
+    it('should throw when reaching the maximum number of derived iterations (on set, with batch)', () => {
+      const store = writable(0);
+      const wrongDerivedStore = derived(store, (value) => {
+        if (value < 0) {
+          store.set(value - 1); // there is no boundary
+        }
+        return value;
+      });
+      const values: number[] = [];
+      const unsubscribe = wrongDerivedStore.subscribe((value) => {
+        values.push(value);
+      });
+      expect(values).toEqual([0]);
+      let reachedAfterSet = false;
+      expect(() => {
+        batch(() => {
+          store.set(-1);
+          reachedAfterSet = true;
+        });
+      }).toThrowError('reached maximum number of store changes in one shot');
+      expect(reachedAfterSet).toBe(true);
       unsubscribe();
       expect(values).toEqual([0]);
     });
