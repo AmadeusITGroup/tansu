@@ -49,6 +49,7 @@ export { batch } from './internal/batch';
 export { equal } from './internal/equal';
 export { symbolObservable } from './internal/exposeRawStores';
 export { untrack } from './internal/untrack';
+export { proxyStore } from './internal/proxy';
 export type * from './types';
 
 /**
