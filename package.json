@@ -25,9 +25,16 @@
   "main": "./dist/package/index.cjs",
   "module": "./dist/package/index.js",
   "exports": {
-    "types": "./dist/package/index.d.ts",
-    "require": "./dist/package/index.cjs",
-    "default": "./dist/package/index.js"
+    ".": {
+      "types": "./dist/package/index.d.ts",
+      "require": "./dist/package/index.cjs",
+      "default": "./dist/package/index.js"
+    },
+    "./polyfill": {
+      "types": "./dist/package/wrapper.d.ts",
+      "require": "./dist/package/wrapper.cjs",
+      "default": "./dist/package/wrapper.js"
+    }
   },
   "license": "MIT",
   "repository": {

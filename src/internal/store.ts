@@ -2,6 +2,7 @@ import type { SignalStore, SubscribableStore } from '../types';
 
 export interface Consumer {
   markDirty(): void;
+  wrapper?: any;
 }
 
 export const enum RawStoreFlags {
@@ -13,6 +14,7 @@ export const enum RawStoreFlags {
   // the following flags are used in RawStoreComputedOrDerived and derived classes
   COMPUTING = 1 << 3,
   DIRTY = 1 << 4,
+  COMPUTED_WITH_ONUSE = 1 << 5,
 }
 
 export interface BaseLink<T> {
@@ -27,9 +29,11 @@ export interface RawStore<T, Link extends BaseLink<T> = BaseLink<T>>
   newLink(consumer: Consumer): Link;
   registerConsumer(link: Link): Link;
   unregisterConsumer(link: Link): void;
+  recCallOnUse(): boolean;
   updateValue(): void;
   isLinkUpToDate(link: Link): boolean;
   updateLink(link: Link): T;
+  wrapper?: any;
 }
 
 export const updateLinkProducerValue = <T>(link: BaseLink<T>): void => {

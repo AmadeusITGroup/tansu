@@ -51,6 +51,7 @@ abstract class RawStoreDerived<T, S extends StoresInput>
       producer.registerConsumer(producer.newLink(this))
     );
     this.flags |= RawStoreFlags.DIRTY;
+    super.startUse();
   }
 
   override endUse(): void {
@@ -63,6 +64,19 @@ abstract class RawStoreDerived<T, S extends StoresInput>
         link.producer.unregisterConsumer(link);
       }
     }
+    super.endUse();
+  }
+
+  override recCallOnUse(): boolean {
+    if (super.recCallOnUse()) {
+      const producerLinks = this.producerLinks!;
+      for (let i = 0, l = producerLinks.length; i < l; i++) {
+        const link = producerLinks[i];
+        const producer = link.producer;
+        producer.recCallOnUse();
+      }
+    }
+    return false;
   }
 
   override areProducersUpToDate(): boolean {

@@ -6,7 +6,7 @@ process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS ?? ''} --expose-gc`;
 export default defineConfig({
   test: {
     setupFiles: ['test.ts'],
-    include: ['src/**/*.spec.ts'],
+    include: ['src/**/*.spec.ts', 'tests/**/*.test.ts'],
     environment: 'happy-dom',
     coverage: {
       provider: 'v8',

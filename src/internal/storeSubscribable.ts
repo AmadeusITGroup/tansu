@@ -29,6 +29,7 @@ export class RawSubscribableWrapper<T> extends RawStoreTrackingUsage<T> {
 
   override startUse(): void {
     this.unsubscribe = normalizeUnsubscribe(this.subscribable.subscribe(this.subscriber));
+    super.startUse();
   }
 
   override endUse(): void {
@@ -37,5 +38,6 @@ export class RawSubscribableWrapper<T> extends RawStoreTrackingUsage<T> {
       this.unsubscribe = null;
       unsubscribe();
     }
+    super.endUse();
   }
 }
