@@ -28,12 +28,19 @@ export const flushUnused = (): void => {
   }
 };
 
-export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
+export class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
   private extraUsages = 0;
-  abstract startUse(): void;
-  abstract endUse(): void;
+  startUseFn?: () => void;
+  endUseFn?: () => void;
 
-  override updateValue(): void {
+  startUse(): void {
+    this.startUseFn?.call(this.wrapper);
+  }
+  endUse(): void {
+    this.endUseFn?.call(this.wrapper);
+  }
+
+  private callOnUse(): boolean {
     const flags = this.flags;
     if (!(flags & RawStoreFlags.START_USE_CALLED)) {
       // Ignoring coverage for the following lines because, unless there is a bug in tansu (which would have to be fixed!)
@@ -44,7 +51,17 @@ export abstract class RawStoreTrackingUsage<T> extends RawStoreWritable<T> {
       }
       this.flags |= RawStoreFlags.START_USE_CALLED;
       untrack(() => this.startUse());
+      return true;
     }
+    return false;
+  }
+
+  override updateValue(): void {
+    this.callOnUse();
+  }
+
+  isUsed(): boolean {
+    return this.extraUsages > 0 || (this.consumerLinks?.length ?? 0) > 0;
   }
 
   override checkUnused(): void {

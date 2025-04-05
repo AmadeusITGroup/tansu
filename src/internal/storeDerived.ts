@@ -51,6 +51,7 @@ abstract class RawStoreDerived<T, S extends StoresInput>
       producer.registerConsumer(producer.newLink(this))
     );
     this.flags |= RawStoreFlags.DIRTY;
+    super.startUse();
   }
 
   override endUse(): void {
@@ -63,6 +64,7 @@ abstract class RawStoreDerived<T, S extends StoresInput>
         link.producer.unregisterConsumer(link);
       }
     }
+    super.endUse();
   }
 
   override areProducersUpToDate(): boolean {
