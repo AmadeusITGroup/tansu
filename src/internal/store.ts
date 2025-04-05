@@ -17,6 +17,7 @@ export const enum RawStoreFlags {
 
 export interface BaseLink<T> {
   producer: RawStore<T, BaseLink<T>>;
+  nextInConsumer: BaseLink<any> | null;
   skipMarkDirty?: boolean;
 }
 

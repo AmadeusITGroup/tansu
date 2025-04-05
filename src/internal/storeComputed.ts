@@ -12,8 +12,8 @@ export class RawStoreComputed<T>
   extends RawStoreComputedOrDerived<T>
   implements Consumer, ActiveConsumer
 {
-  private producerIndex = 0;
-  private producerLinks: BaseLink<any>[] = [];
+  private producerFirst: BaseLink<any> | null = null;
+  private producerLast: BaseLink<any> | null = null;
   private epoch = -1;
 
   constructor(private readonly computeFn: () => T) {
@@ -47,17 +47,21 @@ export class RawStoreComputed<T>
   }
 
   addProducer<U, L extends BaseLink<U>>(producer: RawStore<U, L>): U {
-    const producerLinks = this.producerLinks;
-    const producerIndex = this.producerIndex;
-    let link = producerLinks[producerIndex] as L | undefined;
-    if (link?.producer !== producer) {
-      if (link) {
-        producerLinks.push(link); // push the existing link at the end (to be removed later)
-      }
+    const nextLink = this.producerLast ? this.producerLast.nextInConsumer : this.producerFirst;
+    let link: L;
+    if (nextLink?.producer !== producer) {
+      // existing link cannot be reused
       link = producer.registerConsumer(producer.newLink(this));
+      link.nextInConsumer = nextLink;
+      if (this.producerLast) {
+        this.producerLast.nextInConsumer = link;
+      } else {
+        this.producerFirst = link;
+      }
+    } else {
+      link = nextLink as L;
     }
-    producerLinks[producerIndex] = link;
-    this.producerIndex = producerIndex + 1;
+    this.producerLast = link;
     updateLinkProducerValue(link);
     if (producer.flags & RawStoreFlags.HAS_VISIBLE_ONUSE) {
       this.flags |= RawStoreFlags.HAS_VISIBLE_ONUSE;
@@ -66,19 +70,19 @@ export class RawStoreComputed<T>
   }
 
   override startUse(): void {
-    const producerLinks = this.producerLinks;
-    for (let i = 0, l = producerLinks.length; i < l; i++) {
-      const link = producerLinks[i];
+    let link = this.producerFirst;
+    while (link) {
       link.producer.registerConsumer(link);
+      link = link.nextInConsumer;
     }
     this.flags |= RawStoreFlags.DIRTY;
   }
 
   override endUse(): void {
-    const producerLinks = this.producerLinks;
-    for (let i = 0, l = producerLinks.length; i < l; i++) {
-      const link = producerLinks[i];
+    let link = this.producerFirst;
+    while (link) {
       link.producer.unregisterConsumer(link);
+      link = link.nextInConsumer;
     }
   }
 
@@ -86,14 +90,14 @@ export class RawStoreComputed<T>
     if (this.value === COMPUTED_UNSET) {
       return false;
     }
-    const producerLinks = this.producerLinks;
-    for (let i = 0, l = producerLinks.length; i < l; i++) {
-      const link = producerLinks[i];
+    let link = this.producerFirst;
+    while (link) {
       const producer = link.producer;
       updateLinkProducerValue(link);
       if (!producer.isLinkUpToDate(link)) {
         return false;
       }
+      link = link.nextInConsumer;
     }
     return true;
   }
@@ -102,7 +106,7 @@ export class RawStoreComputed<T>
     let value: T;
     const prevActiveConsumer = setActiveConsumer(this);
     try {
-      this.producerIndex = 0;
+      this.producerLast = null;
       this.flags &= ~RawStoreFlags.HAS_VISIBLE_ONUSE;
       const computeFn = this.computeFn;
       value = computeFn();
@@ -114,13 +118,19 @@ export class RawStoreComputed<T>
       setActiveConsumer(prevActiveConsumer);
     }
     // Remove unused producers:
-    const producerLinks = this.producerLinks;
-    const producerIndex = this.producerIndex;
-    if (producerIndex < producerLinks.length) {
-      for (let i = 0, l = producerLinks.length - producerIndex; i < l; i++) {
-        const link = producerLinks.pop()!;
-        link.producer.unregisterConsumer(link);
-      }
+    let link: BaseLink<any> | null;
+    if (this.producerLast) {
+      link = this.producerLast.nextInConsumer;
+      this.producerLast.nextInConsumer = null;
+    } else {
+      link = this.producerFirst;
+      this.producerFirst = null;
+    }
+    while (link) {
+      const next = link.nextInConsumer;
+      link.producer.unregisterConsumer(link);
+      link.nextInConsumer = null;
+      link = next;
     }
     this.set(value);
   }
